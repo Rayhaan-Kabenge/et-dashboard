@@ -78,3 +78,12 @@ def validate_sheet():
             errors=[schemas.FieldError(tab=e.tab, field=e.field, message=e.message)
                     for e in exc.errors])
     return schemas.ValidateResponse(ok=True, warnings=inputs.warnings)
+
+
+# --- Field Health module (isolated; mounted ONLY when the flag is on) --------
+# The import lives inside the guard so app/field is never loaded when off, keeping
+# the engine build completely decoupled from this feature.
+if settings.feature_field_health:
+    from .field.field_api import router as field_router
+
+    app.include_router(field_router)

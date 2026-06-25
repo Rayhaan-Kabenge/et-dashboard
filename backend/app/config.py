@@ -49,6 +49,17 @@ class Settings(BaseSettings):
     # ---- CORS ----------------------------------------------------------------
     frontend_origin: str = "http://localhost:3000"
 
+    # ---- Field Health module (isolated feature; gated by this flag) ----------
+    # When False the /api/field router is never imported or mounted, and the app
+    # is identical to the irrigation-only build.
+    feature_field_health: bool = True
+    # Copernicus Data Space Ecosystem (CDSE) Sentinel Hub OAuth client (v1).
+    sh_client_id: Optional[str] = None
+    sh_client_secret: Optional[str] = None
+    # v2 (unused in v1): kept here so deploys can set them ahead of time.
+    openet_api_key: Optional[str] = None
+    anthropic_api_key: Optional[str] = None
+
     @property
     def _is_demo_token(self) -> bool:
         return self.sheet_id is None or self.sheet_id.strip().lower() in _DEMO_TOKENS

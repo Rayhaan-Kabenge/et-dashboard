@@ -32,3 +32,6 @@ Growth_stage_visual/
 
 # TypeScript incremental build artifact
 *.tsbuildinfo
+
+# Field Health module — app-side field store + image/index cache
+backend/data/
