@@ -5,13 +5,14 @@ sheets / weather.
 """
 from __future__ import annotations
 
+from datetime import date, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 
-from . import field_store
+from . import field_store, indices
 from .geometry import validate_polygon
-from .schemas import Field, FieldCreate
+from .schemas import Field, FieldCreate, IndexPoint, IndexSeries
 
 router = APIRouter(prefix="/api/field", tags=["field-health"])
 
@@ -43,3 +44,24 @@ def activate_field(field_id: str):
     if field is None:
         raise HTTPException(status_code=404, detail="field not found")
     return field
+
+
+@router.get("/{field_id}/indices", response_model=IndexSeries)
+def get_indices(
+    field_id: str,
+    index: str = "NDRE",
+    start: Optional[str] = None,
+    end: Optional[str] = None,
+):
+    """NDRE (default) / NDVI time series for the field. Cloudy/empty ranges return
+    an empty series with a note — never a 500."""
+    field = field_store.get_field(field_id)
+    if field is None:
+        raise HTTPException(status_code=404, detail="field not found")
+    today = date.today()
+    end = end or today.isoformat()
+    start = start or (today - timedelta(days=120)).isoformat()
+    points, last_obs, note = indices.get_index_series(field, index, start, end)
+    return IndexSeries(
+        field_id=field_id, index=index.upper(), start=start, end=end,
+        points=[IndexPoint(**p) for p in points], last_observation=last_obs, note=note)

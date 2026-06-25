@@ -1,13 +1,28 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Satellite } from "lucide-react";
 import { FIELD_HEALTH_ENABLED } from "@/lib/features";
 import { FieldProvider, useField } from "@/lib/field/context";
+import { fetchState } from "@/lib/api";
 import FieldMeta from "@/components/field/FieldMeta";
+import IndexTimeline from "@/components/field/IndexTimeline";
 import { Skeleton } from "@/components/ui/skeleton";
+
+// Stage markers come from the irrigation /api/state (frontend reuse only — the
+// Field Health backend never calls the engine).
+type StageMarker = { label: string; date: string };
+function useStageMarkers(): StageMarker[] {
+  const [stages, setStages] = useState<StageMarker[]>([]);
+  useEffect(() => {
+    fetchState()
+      .then((s) => setStages((s.stages ?? []).map((x) => ({ label: x.label, date: x.date }))))
+      .catch(() => setStages([]));
+  }, []);
+  return stages;
+}
 
 // Leaflet needs the browser — load the map client-side only.
 const FieldMap = dynamic(() => import("@/components/field/FieldMap"), {
@@ -47,6 +62,7 @@ export default function FieldHealthPage() {
 
 function Body() {
   const { field, loading, error } = useField();
+  const stages = useStageMarkers();
   return (
     <>
       {error && (
@@ -60,17 +76,17 @@ function Body() {
       {loading ? (
         <Skeleton className="h-20 w-full rounded-xl2" />
       ) : field ? (
-        <FieldMeta />
+        <>
+          <FieldMeta />
+          <IndexTimeline stages={stages} />
+          {/* latest-image + summary panels arrive in the next stages */}
+          <div className="rounded-xl2 border border-dashed border-hairline bg-card p-6 text-center text-sm text-muted">
+            Latest-image and field-summary panels arrive next.
+          </div>
+        </>
       ) : (
         <div className="rounded-xl2 border border-dashed border-hairline bg-card p-6 text-center text-sm text-muted">
           No field yet — draw one on the map (draw tool, top-left) or upload a GeoJSON polygon.
-        </div>
-      )}
-
-      {/* panels (index timeline, latest image, summary) arrive in the next stages */}
-      {field && (
-        <div className="rounded-xl2 border border-dashed border-hairline bg-card p-6 text-center text-sm text-muted">
-          Index timeline, latest image, and field-summary panels arrive next.
         </div>
       )}
     </>
