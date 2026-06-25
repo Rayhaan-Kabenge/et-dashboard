@@ -87,15 +87,15 @@ export default function Page() {
 
 function Legend() {
   return (
-    <div className="hidden items-center gap-3 text-xs text-ink/55 sm:flex">
+    <div className="hidden items-center gap-3 font-mono text-xs text-muted sm:flex">
       <span className="inline-flex items-center gap-1.5">
-        <span className="h-2 w-4 rounded-full bg-leaf-600" /> Actual
+        <span className="h-2 w-4 rounded-full bg-brand" /> actual
       </span>
       <span className="inline-flex items-center gap-1.5">
-        <span className="h-0 w-4 border-t-2 border-dashed border-sky-500" /> Forecast
+        <span className="h-0 w-4 border-t-2 border-dashed border-water" /> forecast
       </span>
       <span className="inline-flex items-center gap-1.5">
-        <span className="h-0 w-4 border-t-2 border-dashed border-amber-500" /> AD
+        <span className="h-0 w-4 border-t-2 border-dashed border-status-soon" /> AD
       </span>
     </div>
   );
