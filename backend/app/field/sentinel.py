@@ -6,10 +6,13 @@ service layer can degrade gracefully (empty series, never a 500).
 """
 from __future__ import annotations
 
+import math
 import time
 from typing import Optional
 
 import httpx
+
+from .geometry import centroid
 
 TOKEN_URL = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
 BASE_URL = "https://sh.dataspace.copernicus.eu"
@@ -84,6 +87,12 @@ class SentinelClient:
         """Per-acquisition stats for a polygon over [start, end] (YYYY-MM-DD).
         Returns [{date, mean, stdev, valid_fraction}] for intervals with data."""
         token = self._bearer()
+        # resx/resy are in the bounds-CRS units (EPSG:4326 = degrees), so express
+        # the ~10 m pixel size in degrees (latitude-adjusted) — otherwise "10"
+        # means 10° and the whole field collapses to a single sample.
+        lat_c = centroid(geometry)[1]
+        resy = 10.0 / 111320.0
+        resx = 10.0 / (111320.0 * max(0.1, math.cos(math.radians(lat_c))))
         body = {
             "input": {
                 "bounds": {"geometry": geometry, "properties": {"crs": "http://www.opengis.net/def/crs/EPSG/0/4326"}},
@@ -93,8 +102,8 @@ class SentinelClient:
                 "timeRange": {"from": f"{start}T00:00:00Z", "to": f"{end}T23:59:59Z"},
                 "aggregationInterval": {"of": "P1D"},
                 "evalscript": evalscript(index),
-                "resx": 10,
-                "resy": 10,
+                "resx": resx,
+                "resy": resy,
             },
         }
         try:

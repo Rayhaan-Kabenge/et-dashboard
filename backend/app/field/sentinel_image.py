@@ -56,9 +56,14 @@ def build_process_request(geometry: dict, bbox: list[float], index: str, date_st
     if date_str and date_str != "latest":
         start = date_str
         end = (date.fromisoformat(date_str) + timedelta(days=1)).isoformat()
+        mosaicking = "leastCC"
     else:
+        # "latest": widest practical window + mostRecent so we always pick the
+        # newest AVAILABLE scene (robust to clock skew vs the catalog).
         end = date.today().isoformat()
-        start = (date.today() - timedelta(days=90)).isoformat()
+        start = (date.today() - timedelta(days=1095)).isoformat()
+        mosaicking = "mostRecent"
+    max_cloud = 80 if (date_str and date_str != "latest") else 20  # latest = most recent CLEAR scene
     return {
         "input": {
             "bounds": {"geometry": geometry, "properties": {"crs": "http://www.opengis.net/def/crs/EPSG/0/4326"}},
@@ -66,8 +71,8 @@ def build_process_request(geometry: dict, bbox: list[float], index: str, date_st
                 "type": "sentinel-2-l2a",
                 "dataFilter": {
                     "timeRange": {"from": f"{start}T00:00:00Z", "to": f"{end}T23:59:59Z"},
-                    "mosaickingOrder": "leastCC",
-                    "maxCloudCoverage": 80,
+                    "mosaickingOrder": mosaicking,
+                    "maxCloudCoverage": max_cloud,
                 },
             }],
         },
