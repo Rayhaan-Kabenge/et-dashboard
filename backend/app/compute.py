@@ -158,6 +158,16 @@ def build_state(settings: Settings, sample_dir: Optional[Path] = None) -> schema
     cr = run_engine(inputs, settings)
     rows, n_actual = cr.rows, cr.n_actual
     weather_by_date = {w["date"]: w for w in cr.weather}
+    rows_by_date = {r["date"]: r for r in rows}
+
+    # read-only passthrough: engine stages with their already-computed start GDD/DAP
+    stage_infos = []
+    for st in cr.engine_stages:
+        r = rows_by_date.get(st.date)
+        stage_infos.append(schemas.StageInfo(
+            label=st.label, date=st.date,
+            kind="provisional" if st.label in cr.provisional else "observed",
+            gdd=(r["cumgdd"] if r else None), dap=(r["dap"] if r else None)))
 
     actual_rows = cr.actual_rows
     forecast_rows = cr.forecast_rows
@@ -239,7 +249,6 @@ def build_state(settings: Settings, sample_dir: Optional[Path] = None) -> schema
 
     # ----- schedule readback -----
     sched_entries = []
-    rows_by_date = {r["date"]: r for r in rows}
     for d in sorted(inputs.schedule):
         r = rows_by_date.get(d)
         sched_entries.append(schemas.ScheduleEntry(
@@ -263,8 +272,8 @@ def build_state(settings: Settings, sample_dir: Optional[Path] = None) -> schema
 
     return schemas.StateResponse(
         site=site, freshness=freshness, today=today, decision=decision, series=series,
-        growth_stage=growth, season_summary=summary, schedule=sched_entries, alerts=alerts,
-        generated_at=datetime.now().isoformat())
+        stages=stage_infos, growth_stage=growth, season_summary=summary,
+        schedule=sched_entries, alerts=alerts, generated_at=datetime.now().isoformat())
 
 
 def _recommendation(should_now, days_to_trigger, projected_date, today_real) -> str:

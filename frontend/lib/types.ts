@@ -86,6 +86,14 @@ export interface GrowthStage {
   estimated: boolean;
 }
 
+export interface StageInfo {
+  label: string;
+  date: string;
+  kind: "observed" | "provisional";
+  gdd: number | null;
+  dap: number | null;
+}
+
 export interface ScheduleEntry {
   date: string;
   type: string;
@@ -116,6 +124,7 @@ export interface StateResponse {
   today: TodayState | null;
   decision: Decision | null;
   series: SeriesPoint[];
+  stages: StageInfo[];
   growth_stage: GrowthStage | null;
   season_summary: SeasonSummary;
   schedule: ScheduleEntry[];

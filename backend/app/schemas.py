@@ -98,6 +98,16 @@ class GrowthStage(BaseModel):
     estimated: bool = False        # current interval bounded by a provisional next stage
 
 
+class StageInfo(BaseModel):
+    """Read-only passthrough of already-computed engine stage info (for the
+    growth-stage stepper + next-stage preview). No new computation."""
+    label: str
+    date: date
+    kind: str                      # "observed" | "provisional"
+    gdd: Optional[float] = None    # cumulative GDD at this stage's start (from the engine row)
+    dap: Optional[int] = None
+
+
 class ScheduleEntry(BaseModel):
     date: date
     type: str                      # "Irrig" | "Fert"
@@ -128,6 +138,7 @@ class StateResponse(BaseModel):
     today: Optional[TodayState] = None
     decision: Optional[Decision] = None
     series: list[SeriesPoint] = []
+    stages: list[StageInfo] = []
     growth_stage: Optional[GrowthStage] = None
     season_summary: SeasonSummary = SeasonSummary()
     schedule: list[ScheduleEntry] = []
