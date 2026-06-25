@@ -5,16 +5,22 @@ sheets / weather.
 """
 from __future__ import annotations
 
+import base64
+import time
 from datetime import date, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 
+from ..config import get_settings
 from . import field_store, indices
 from .geometry import validate_polygon
-from .schemas import Field, FieldCreate, IndexPoint, IndexSeries
+from .schemas import Field, FieldCreate, FieldImage, IndexPoint, IndexSeries
+from .sentinel import SentinelClient, SentinelError
 
 router = APIRouter(prefix="/api/field", tags=["field-health"])
+
+IMAGE_TTL = 6 * 3600  # seconds — cache the "latest" image briefly
 
 
 @router.get("/health")
@@ -65,3 +71,34 @@ def get_indices(
     return IndexSeries(
         field_id=field_id, index=index.upper(), start=start, end=end,
         points=[IndexPoint(**p) for p in points], last_observation=last_obs, note=note)
+
+
+@router.get("/{field_id}/image", response_model=FieldImage)
+def get_image(field_id: str, index: str = "NDRE", date: str = "latest"):
+    """Colorized index PNG (base64) for the latest valid scene (or a given date),
+    clipped to the field. Cloudy/missing -> note, never a 500."""
+    field = field_store.get_field(field_id)
+    if field is None:
+        raise HTTPException(status_code=404, detail="field not found")
+    index = index.upper()
+    resolved_date = None if date == "latest" else date
+
+    cache_png = field_store.cache_path(field_id, f"image_{index}_{date}.png")
+    fresh = (
+        cache_png.exists()
+        and cache_png.stat().st_size > 0
+        and (date != "latest" or (time.time() - cache_png.stat().st_mtime) < IMAGE_TTL)
+    )
+    if fresh:
+        b64 = base64.b64encode(cache_png.read_bytes()).decode()
+        return FieldImage(field_id=field_id, index=index, date=resolved_date, png_base64=b64, bbox=field.bbox)
+
+    s = get_settings()
+    client = SentinelClient(s.sh_client_id, s.sh_client_secret)
+    try:
+        png = client.index_png(field.geometry, field.bbox, index, date)
+        cache_png.write_bytes(png)
+        b64 = base64.b64encode(png).decode()
+        return FieldImage(field_id=field_id, index=index, date=resolved_date, png_base64=b64, bbox=field.bbox)
+    except SentinelError as exc:
+        return FieldImage(field_id=field_id, index=index, date=None, png_base64=None, bbox=field.bbox, note=str(exc))
