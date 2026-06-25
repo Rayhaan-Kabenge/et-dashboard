@@ -65,6 +65,9 @@ export default function FieldHealthPage() {
 function Body() {
   const { field, loading, error } = useField();
   const stages = useStageMarkers();
+  // the timeline owns the date-range selector; the image panel follows it.
+  // undefined until the timeline reports; then { start, end }.
+  const [imageRange, setImageRange] = useState<{ start: string; end: string } | undefined>(undefined);
   return (
     <>
       {error && (
@@ -80,8 +83,8 @@ function Body() {
       ) : field ? (
         <>
           <FieldMeta />
-          <IndexTimeline stages={stages} />
-          <LatestImage />
+          <IndexTimeline stages={stages} onRangeChange={setImageRange} />
+          <LatestImage range={imageRange} />
           <FieldSummary />
         </>
       ) : (

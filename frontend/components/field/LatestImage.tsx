@@ -8,7 +8,12 @@ import type { FieldImage } from "@/lib/field/types";
 import CollapsibleCard from "./CollapsibleCard";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function LatestImage() {
+export default function LatestImage({
+  range,
+}: {
+  // undefined = range not known yet (wait); null = fall back to overall most-recent
+  range?: { start: string; end: string } | null;
+}) {
   const { field } = useField();
   const [index, setIndex] = useState<"NDRE" | "NDVI">("NDRE");
   const [img, setImg] = useState<FieldImage | null>(null);
@@ -17,17 +22,17 @@ export default function LatestImage() {
   const [zoom, setZoom] = useState(false);
 
   useEffect(() => {
-    if (!field) return;
+    if (!field || range === undefined) return; // wait until the timeline reports its range
     let cancelled = false;
     setLoading(true);
-    getImage(field.id, index, "latest")
+    getImage(field.id, index, range)
       .then((d) => !cancelled && (setImg(d), setError(null)))
       .catch((e) => !cancelled && setError(e.message))
       .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;
     };
-  }, [field, index]);
+  }, [field, index, range?.start, range?.end, range]);
 
   const src = img?.png_base64 ? `data:image/png;base64,${img.png_base64}` : null;
   const note = img?.note ?? error ?? null;
@@ -35,7 +40,7 @@ export default function LatestImage() {
   return (
     <CollapsibleCard
       title="Latest image"
-      subtitle={`Colorized ${index} · least-cloud scene`}
+      subtitle={`Colorized ${index} · ${range ? "most recent cloud-free in range" : "least-cloud scene"}`}
       icon={ImageIcon}
       right={
         <div className="inline-flex rounded-full border border-hairline p-0.5 text-xs">

@@ -19,7 +19,13 @@ function iso(d: Date) {
   return d.toISOString().slice(0, 10);
 }
 
-export default function IndexTimeline({ stages }: { stages: StageMarker[] }) {
+export default function IndexTimeline({
+  stages,
+  onRangeChange,
+}: {
+  stages: StageMarker[];
+  onRangeChange?: (range: { start: string; end: string }) => void;
+}) {
   const { field } = useField();
   const [index, setIndex] = useState<"NDRE" | "NDVI">("NDRE");
   const [preset, setPreset] = useState<Preset>("season");
@@ -55,6 +61,11 @@ export default function IndexTimeline({ stages }: { stages: StageMarker[] }) {
       cancelled = true;
     };
   }, [field, index, start, end]);
+
+  // report the selected range up so sibling panels (e.g. Latest image) can follow it
+  useEffect(() => {
+    onRangeChange?.({ start, end });
+  }, [start, end, onRangeChange]);
 
   const data = useMemo(() => {
     const pts = series?.points ?? [];

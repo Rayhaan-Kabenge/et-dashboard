@@ -40,13 +40,18 @@ export async function getIndices(
   return asJson<IndexSeries>(await fetch(`${BASE}/${fieldId}/indices?${q}`, { cache: "no-store" }));
 }
 
-export function imageUrl(fieldId: string, index: string, date = "latest"): string {
-  const q = new URLSearchParams({ index, date });
-  return `${BASE}/${fieldId}/image?${q}`;
-}
-
-export async function getImage(fieldId: string, index: string, date = "latest"): Promise<FieldImage> {
-  const q = new URLSearchParams({ index, date });
+export async function getImage(
+  fieldId: string,
+  index: string,
+  range?: { start: string; end: string } | null
+): Promise<FieldImage> {
+  const q = new URLSearchParams({ index });
+  if (range) {
+    q.set("start", range.start);
+    q.set("end", range.end);
+  } else {
+    q.set("date", "latest");
+  }
   return asJson<FieldImage>(await fetch(`${BASE}/${fieldId}/image?${q}`, { cache: "no-store" }));
 }
 

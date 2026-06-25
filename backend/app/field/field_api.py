@@ -74,32 +74,55 @@ def get_indices(
 
 
 @router.get("/{field_id}/image", response_model=FieldImage)
-def get_image(field_id: str, index: str = "NDRE", date: str = "latest"):
-    """Colorized index PNG (base64) for the latest valid scene (or a given date),
-    clipped to the field. Cloudy/missing -> note, never a 500."""
+def get_image(
+    field_id: str,
+    index: str = "NDRE",
+    date: str = "latest",
+    start: Optional[str] = None,
+    end: Optional[str] = None,
+):
+    """Colorized index PNG (base64), clipped to the field.
+
+    With a [start, end] range: the most recent CLOUD-FREE scene inside it (date
+    labelled). Otherwise the overall most-recent scene ("latest"). Cloudy/missing
+    -> note, never a 500."""
     field = field_store.get_field(field_id)
     if field is None:
         raise HTTPException(status_code=404, detail="field not found")
     index = index.upper()
-    resolved_date = None if date == "latest" else date
 
-    cache_png = field_store.cache_path(field_id, f"image_{index}_{date}.png")
+    # Resolve the scene date: within a range, reuse the index series (same cloud
+    # masking the timeline uses) to find the most recent valid observation.
+    if start and end:
+        _, last_obs, note = indices.get_index_series(field, index, start, end)
+        if not last_obs:
+            return FieldImage(field_id=field_id, index=index, date=None, png_base64=None,
+                              bbox=field.bbox, note=note or "No cloud-free imagery in this range.")
+        scene_date: Optional[str] = last_obs
+        image_param = last_obs
+        cache_tag = last_obs
+    else:
+        scene_date = None
+        image_param = "latest"
+        cache_tag = "latest"
+
+    cache_png = field_store.cache_path(field_id, f"image_{index}_{cache_tag}.png")
     fresh = (
         cache_png.exists()
         and cache_png.stat().st_size > 0
-        and (date != "latest" or (time.time() - cache_png.stat().st_mtime) < IMAGE_TTL)
+        and (scene_date is not None or (time.time() - cache_png.stat().st_mtime) < IMAGE_TTL)
     )
     if fresh:
         b64 = base64.b64encode(cache_png.read_bytes()).decode()
-        return FieldImage(field_id=field_id, index=index, date=resolved_date, png_base64=b64, bbox=field.bbox)
+        return FieldImage(field_id=field_id, index=index, date=scene_date, png_base64=b64, bbox=field.bbox)
 
     s = get_settings()
     client = SentinelClient(s.sh_client_id, s.sh_client_secret)
     try:
-        png = client.index_png(field.geometry, field.bbox, index, date)
+        png = client.index_png(field.geometry, field.bbox, index, image_param)
         cache_png.write_bytes(png)
         b64 = base64.b64encode(png).decode()
-        return FieldImage(field_id=field_id, index=index, date=resolved_date, png_base64=b64, bbox=field.bbox)
+        return FieldImage(field_id=field_id, index=index, date=scene_date, png_base64=b64, bbox=field.bbox)
     except SentinelError as exc:
         return FieldImage(field_id=field_id, index=index, date=None, png_base64=None, bbox=field.bbox, note=str(exc))
 
