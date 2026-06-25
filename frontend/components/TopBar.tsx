@@ -1,19 +1,35 @@
 "use client";
 
+import { MapPin, ExternalLink, RefreshCw } from "lucide-react";
 import type { StateResponse } from "@/lib/types";
 import FreshnessDot from "./FreshnessDot";
-import WeatherChips from "./WeatherChips";
 import UnitsToggle from "./UnitsToggle";
 import LiveClock from "./LiveClock";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 
-function LeafMark() {
+// water-drop-as-leaf wordmark
+function Wordmark() {
   return (
-    <svg viewBox="0 0 24 24" className="h-7 w-7 text-leaf-600" aria-hidden>
-      <path
-        fill="currentColor"
-        d="M20 3c-9 0-16 5-16 13 0 1.7.4 3.2 1 4.5C7 16 11 12 17 10c-5 3-8 7-9 12 1 .3 2 .5 3 .5 8 0 13-7 13-16 0-1.4-.1-2.7-.4-4-1.2.0-2.4 0-3.6 0Z"
-      />
-    </svg>
+    <span className="flex h-9 w-9 items-center justify-center rounded-xl2 bg-brand/10">
+      <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+        <path
+          d="M12 2.5c3.6 4.2 6.5 7.6 6.5 11.2A6.5 6.5 0 0 1 12 20.2a6.5 6.5 0 0 1-6.5-6.5C5.5 10.1 8.4 6.7 12 2.5Z"
+          fill="var(--water)"
+          opacity="0.18"
+        />
+        <path
+          d="M12 2.5c3.6 4.2 6.5 7.6 6.5 11.2A6.5 6.5 0 0 1 12 20.2"
+          fill="none"
+          stroke="var(--brand)"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+        />
+        <path d="M12 7.5v9M12 11.5c1.6-.4 2.8-1.4 3.3-3M12 14c-1.5-.3-2.6-1.2-3.1-2.6"
+          fill="none" stroke="var(--brand-accent)" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+    </span>
   );
 }
 
@@ -28,62 +44,48 @@ export default function TopBar({
 }) {
   const { site } = state;
   return (
-    <header className="sticky top-0 z-20 border-b border-black/5 bg-canvas/85 backdrop-blur-md">
+    <header className="sticky top-0 z-20 border-b border-hairline bg-canvas/85 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+        {/* identity */}
         <div className="flex items-center gap-3">
-          <LeafMark />
+          <Wordmark />
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-semibold leading-tight text-ink">{site.name}</h1>
+              <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-ink">{site.name}</h1>
               {site.demo_mode && (
-                <span className="chip bg-amber-400/15 text-amber-500 !px-2 !py-0.5 text-xs">demo</span>
+                <Badge variant="soon" className="px-2 py-0">demo</Badge>
               )}
             </div>
-            <div className="flex items-center gap-2 text-xs text-ink/50">
+            <div className="mt-0.5 flex items-center gap-2 font-mono text-[11px] text-muted">
               <span>Season {site.season}</span>
-              <span>·</span>
-              <span>
-                {site.latitude.toFixed(2)}°, {site.longitude !== null ? `${site.longitude.toFixed(2)}°` : "lon n/a"}
+              <span className="text-hairline">·</span>
+              <span className="inline-flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                {site.latitude.toFixed(2)}°{site.longitude !== null ? `, ${site.longitude.toFixed(2)}°` : ""}
               </span>
-              <span>·</span>
+              <span className="text-hairline">·</span>
               <LiveClock />
             </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <WeatherChips state={state} />
-          <div className="h-5 w-px bg-black/10" />
+        {/* controls */}
+        <div className="flex flex-wrap items-center gap-2.5">
           <FreshnessDot freshness={state.freshness} />
+          <Separator orientation="vertical" className="h-5" />
           <UnitsToggle />
           {site.sheet_edit_url && (
-            <a
-              href={site.sheet_edit_url}
-              target="_blank"
-              rel="noreferrer"
-              className="chip border border-black/10 bg-white text-ink/70 hover:border-leaf-500 hover:text-leaf-700"
-            >
-              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-none stroke-current" strokeWidth={2}>
-                <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M14 4h6v6M10 14 20 4" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              Edit sheet
-            </a>
+            <Button variant="outline" size="sm" asChild>
+              <a href={site.sheet_edit_url} target="_blank" rel="noreferrer">
+                <ExternalLink className="h-3.5 w-3.5" />
+                Edit sheet
+              </a>
+            </Button>
           )}
-          <button
-            onClick={onRefresh}
-            disabled={refreshing}
-            className="chip bg-leaf-600 text-white hover:bg-leaf-700 disabled:opacity-50"
-            title="Re-read the sheet and re-anchor the forecast"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              className={`h-3.5 w-3.5 fill-none stroke-current ${refreshing ? "animate-spin" : ""}`}
-              strokeWidth={2}
-            >
-              <path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+          <Button size="sm" onClick={onRefresh} disabled={refreshing} title="Re-read the sheet and re-anchor the forecast">
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
             {refreshing ? "Refreshing" : "Refresh"}
-          </button>
+          </Button>
         </div>
       </div>
     </header>

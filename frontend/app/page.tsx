@@ -5,6 +5,7 @@ import type { StateResponse } from "@/lib/types";
 import { fetchState } from "@/lib/api";
 import TopBar from "@/components/TopBar";
 import AlertsBar from "@/components/AlertsBar";
+import HeroBanner from "@/components/HeroBanner";
 import DecisionCard from "@/components/DecisionCard";
 import DepletionChart from "@/components/DepletionChart";
 import GrowthStageCard from "@/components/GrowthStageCard";
@@ -51,6 +52,8 @@ export default function Page() {
           </div>
         )}
         <AlertsBar alerts={state.alerts} />
+
+        <HeroBanner state={state} />
 
         <DecisionCard state={state} />
 
