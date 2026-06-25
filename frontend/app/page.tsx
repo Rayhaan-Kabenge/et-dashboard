@@ -7,6 +7,7 @@ import TopBar from "@/components/TopBar";
 import AlertsBar from "@/components/AlertsBar";
 import HeroBanner from "@/components/HeroBanner";
 import RootZoneMeter from "@/components/RootZoneMeter";
+import WeatherBar from "@/components/WeatherBar";
 import DepletionChart from "@/components/DepletionChart";
 import GrowthStageCard from "@/components/GrowthStageCard";
 import RecordsPanel from "@/components/RecordsPanel";
@@ -56,6 +57,8 @@ export default function Page() {
         <HeroBanner state={state} />
 
         <RootZoneMeter state={state} />
+
+        <WeatherBar state={state} />
 
         <div className="grid gap-6 lg:grid-cols-[1.9fr_1fr]">
           <div className="card flex flex-col p-6">
