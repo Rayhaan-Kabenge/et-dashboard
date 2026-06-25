@@ -1,0 +1,31 @@
+# --- dependencies / build output ---
+node_modules/
+.next/
+dist/
+build/
+*.egg-info/
+__pycache__/
+*.pyc
+
+# --- python envs ---
+.venv/
+venv/
+env/
+
+# --- secrets / env (keep *.example tracked) ---
+.env
+.env.local
+
+# --- test / coverage / misc ---
+.pytest_cache/
+coverage/
+.DS_Store
+*.log
+
+# --- local-only Claude settings (launch.json stays tracked) ---
+.claude/settings.local.json
+
+# --- redundant local source drops (engine is vendored in engine/;
+#     stage photos are committed under frontend/public/stages/) ---
+_original_drop/
+Growth_stage_visual/

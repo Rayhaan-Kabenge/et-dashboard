@@ -1,0 +1,13 @@
+Field,Value,Notes
+Site name,Schudel Farm — North Pivot,
+Season (year),2026,
+Latitude,39.18,decimal degrees
+Elevation,320.0,m
+Reference crop,Tall,Tall|Short (alfalfa ETr)
+Wind height,2,m (expect 2; input wind is u2)
+Planting date,2026-05-01,
+Curve Number (CN),78,SCS runoff curve number
+Initial depletion,0,mm at planting
+Irrigation depth,25,mm per scheduled Irrig event
+Fertigation depth,15,mm per scheduled Fert event
+Humidity input type,RHmax_RHmin,RHmax_RHmin|Dewpoint|VaporPressure

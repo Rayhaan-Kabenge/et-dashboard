@@ -1,0 +1,23 @@
+# Render blueprint for the backend API (Docker). The frontend deploys to Vercel.
+# Create from the Render dashboard: New > Blueprint, point at this repo.
+services:
+  - type: web
+    name: et-dashboard-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    plan: starter
+    envVars:
+      # Defaults to the build's target sheet. Set SHEET_ID=demo for the bundled
+      # sample season, or your own published sheet's id for other fields.
+      - key: SHEET_ID
+        value: "1USpOtSe83zCZdXUz19MnhOvIxZDpZI-8ak20AIEX320"
+      - key: LON
+        value: "-101.05" # site longitude for Open-Meteo (latitude comes from the sheet)
+      - key: FRONTEND_ORIGIN
+        value: https://your-frontend.vercel.app
+      - key: CACHE_TTL_SECONDS
+        value: "600"
+      - key: FORECAST_HORIZON_DAYS
+        value: "21"

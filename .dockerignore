@@ -1,0 +1,11 @@
+**/.venv
+**/__pycache__
+**/*.pyc
+frontend
+node_modules
+.git
+.github
+reference/*.xlsm
+_original_drop
+**/.pytest_cache
+**/.next

@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  background-color: theme("colors.canvas");
+  color: theme("colors.ink");
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl2 bg-white shadow-card border border-black/5;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium;
+  }
+  .stat-label {
+    @apply text-xs font-medium uppercase tracking-wide text-ink/50;
+  }
+  .stat-value {
+    @apply text-2xl font-semibold tabular-nums text-ink;
+  }
+}
+
+/* recharts focus outlines off for a cleaner look */
+.recharts-wrapper:focus,
+.recharts-surface:focus {
+  outline: none;
+}

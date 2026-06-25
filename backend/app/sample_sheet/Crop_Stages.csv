@@ -1,0 +1,7 @@
+Stage,Date observed,Kcr slope,Kcr intercept,Managed depth Zr (mm),MAD (fraction),Avg days to next
+VE,2026-05-01,0.0,0.1,,,21
+V6,2026-05-22,0.3,0.1,300,0.5,23
+V12,2026-06-14,0.5,0.4,500,0.5,21
+VT/R1,,0.1,0.9,700,0.55,31
+R4,,-0.3,1.0,900,0.6,46
+Maturity,,0.0,0.0,,,

@@ -1,0 +1,14 @@
+# Backend runtime + test deps.
+# The validated engine is installed separately and unchanged:
+#     pip install ./engine            (from repo root)
+# pyfao56 (engine dependency) provides the ASCE-2005 reference ET.
+
+fastapi>=0.110
+uvicorn[standard]>=0.29
+httpx>=0.27
+pydantic>=2.6
+pydantic-settings>=2.2
+python-dotenv>=1.0
+openpyxl>=3.1
+pyfao56>=1.3.0
+pytest>=8.0
