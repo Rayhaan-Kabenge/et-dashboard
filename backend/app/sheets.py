@@ -284,6 +284,22 @@ class CsvSheetSource:
             warnings.append(
                 f"Site_Config planting date {cfg_plant} differs from earliest stage "
                 f"{planting}; using the earliest observed stage date as planting.")
+
+        # The engine's daily balance begins at planting (stage 0 == weather day 0).
+        # Drop any weather rows dated before planting (e.g. stray prior-season rows);
+        # otherwise the engine's stage index would over-increment and overflow.
+        if planting:
+            pre = [w for w in weather if w["date"] < planting]
+            if pre:
+                warnings.append(
+                    f"dropped {len(pre)} weather row(s) dated before planting {planting} "
+                    f"(first was {pre[0]['date']}); the season starts at planting.")
+                weather = [w for w in weather if w["date"] >= planting]
+            if not weather:
+                raise SheetValidationError([LoadError(
+                    TAB_WEATHER, "_rows",
+                    f"no weather rows on/after the planting date {planting}.")])
+
         self._check_weather_contiguous(weather, warnings)
         if weather and observed and observed[-1].date > weather[-1]["date"]:
             warnings.append(
