@@ -13,9 +13,9 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 
 from ..config import get_settings
-from . import field_store, indices
+from . import field_store, gridmet, indices, openet, summary as summary_svc
 from .geometry import validate_polygon
-from .schemas import Field, FieldCreate, FieldImage, IndexPoint, IndexSeries
+from .schemas import Field, FieldCreate, FieldImage, IndexPoint, IndexSeries, SummaryResponse
 from .sentinel import SentinelClient, SentinelError
 
 router = APIRouter(prefix="/api/field", tags=["field-health"])
@@ -102,3 +102,32 @@ def get_image(field_id: str, index: str = "NDRE", date: str = "latest"):
         return FieldImage(field_id=field_id, index=index, date=resolved_date, png_base64=b64, bbox=field.bbox)
     except SentinelError as exc:
         return FieldImage(field_id=field_id, index=index, date=None, png_base64=None, bbox=field.bbox, note=str(exc))
+
+
+def _require_field(field_id: str) -> Field:
+    field = field_store.get_field(field_id)
+    if field is None:
+        raise HTTPException(status_code=404, detail="field not found")
+    return field
+
+
+@router.post("/{field_id}/summary", response_model=SummaryResponse)
+def field_summary(field_id: str):
+    """v1 stub — returns a 'coming soon' placeholder. v2 assembles computed values
+    and calls Anthropic."""
+    return summary_svc.build_summary(_require_field(field_id))
+
+
+# --- v2 scaffolds (typed empty results; NOT wired into the UI yet) -----------
+@router.get("/{field_id}/et")
+def actual_et(field_id: str, start: Optional[str] = None, end: Optional[str] = None):
+    field = _require_field(field_id)
+    return {"field_id": field_id, "source": "openet",
+            "points": openet.actual_et(field, start or "", end or ""), "note": "v2 — not yet enabled"}
+
+
+@router.get("/{field_id}/gridmet")
+def reference_et(field_id: str, start: Optional[str] = None, end: Optional[str] = None):
+    field = _require_field(field_id)
+    return {"field_id": field_id, "source": "gridmet",
+            "points": gridmet.reference_et(field, start or "", end or ""), "note": "v2 — not yet enabled"}

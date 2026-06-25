@@ -10,6 +10,7 @@ import { fetchState } from "@/lib/api";
 import FieldMeta from "@/components/field/FieldMeta";
 import IndexTimeline from "@/components/field/IndexTimeline";
 import LatestImage from "@/components/field/LatestImage";
+import FieldSummary from "@/components/field/FieldSummary";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Stage markers come from the irrigation /api/state (frontend reuse only — the
@@ -81,10 +82,7 @@ function Body() {
           <FieldMeta />
           <IndexTimeline stages={stages} />
           <LatestImage />
-          {/* field-summary panel arrives in the next stage */}
-          <div className="rounded-xl2 border border-dashed border-hairline bg-card p-6 text-center text-sm text-muted">
-            Field-summary panel arrives next.
-          </div>
+          <FieldSummary />
         </>
       ) : (
         <div className="rounded-xl2 border border-dashed border-hairline bg-card p-6 text-center text-sm text-muted">
