@@ -10,8 +10,8 @@ export default function UnitsToggle() {
         <button
           key={u}
           onClick={() => setUnit(u)}
-          className={`rounded-full px-3 py-1 font-medium transition ${
-            unit === u ? "bg-leaf-600 text-white shadow-sm" : "text-ink/60 hover:text-ink"
+          className={`rounded-full px-3 py-1 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+            unit === u ? "bg-brand text-canvas shadow-sm" : "text-muted hover:text-ink"
           }`}
           aria-pressed={unit === u}
         >

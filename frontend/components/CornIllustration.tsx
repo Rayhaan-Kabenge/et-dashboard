@@ -12,8 +12,8 @@ export default function CornIllustration({ progress }: { progress: number }) {
   const tassel = p > 0.62;
   const ear = p > 0.55;
   const mature = p > 0.86;
-  const stalk = mature ? "#b89a3e" : "#5a9d5a";
-  const leafColor = mature ? "#c2a64a" : "#3f8a45";
+  const stalk = mature ? "var(--soil)" : "var(--brand-accent)";
+  const leafColor = mature ? "var(--amber)" : "var(--brand-accent)";
 
   const leafNodes = Array.from({ length: leaves }, (_, i) => {
     const t = (i + 1) / (leaves + 1);
@@ -36,8 +36,8 @@ export default function CornIllustration({ progress }: { progress: number }) {
   return (
     <svg viewBox="0 0 160 168" className="h-44 w-full" role="img" aria-label="corn growth stage">
       {/* soil */}
-      <rect x="0" y={groundY} width="160" height="18" rx="3" fill="#7a4f2f" opacity="0.18" />
-      <line x1="14" y1={groundY + 7} x2="146" y2={groundY + 7} stroke="#7a4f2f" strokeOpacity="0.25" strokeDasharray="2 5" strokeWidth="1.5" />
+      <rect x="0" y={groundY} width="160" height="18" rx="3" fill="var(--soil-deep)" opacity="0.18" />
+      <line x1="14" y1={groundY + 7} x2="146" y2={groundY + 7} stroke="var(--soil-deep)" strokeOpacity="0.25" strokeDasharray="2 5" strokeWidth="1.5" />
 
       {/* stalk */}
       <line x1="80" y1={groundY} x2="80" y2={topY} stroke={stalk} strokeWidth={5.5} strokeLinecap="round" />
@@ -47,13 +47,13 @@ export default function CornIllustration({ progress }: { progress: number }) {
       {/* ear */}
       {ear && (
         <g>
-          <ellipse cx={92} cy={groundY - h * 0.42} rx={7} ry={13} fill="#d8c24a" transform={`rotate(20 92 ${groundY - h * 0.42})`} />
+          <ellipse cx={92} cy={groundY - h * 0.42} rx={7} ry={13} fill="var(--amber)" transform={`rotate(20 92 ${groundY - h * 0.42})`} />
         </g>
       )}
 
       {/* tassel */}
       {tassel && (
-        <g stroke={mature ? "#caa84a" : "#7bbf6a"} strokeWidth="2.2" strokeLinecap="round">
+        <g stroke={mature ? "var(--amber)" : "var(--brand-accent)"} strokeWidth="2.2" strokeLinecap="round">
           <line x1="80" y1={topY} x2="80" y2={topY - 14} />
           <line x1="80" y1={topY} x2="72" y2={topY - 11} />
           <line x1="80" y1={topY} x2="88" y2={topY - 11} />
@@ -63,7 +63,7 @@ export default function CornIllustration({ progress }: { progress: number }) {
       )}
 
       {/* seedling sprout cap when very young */}
-      {p < 0.12 && <circle cx="80" cy={topY} r="4" fill="#5a9d5a" />}
+      {p < 0.12 && <circle cx="80" cy={topY} r="4" fill="var(--brand-accent)" />}
     </svg>
   );
 }

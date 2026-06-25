@@ -12,6 +12,9 @@ import DepletionChart from "@/components/DepletionChart";
 import GrowthStageCard from "@/components/GrowthStageCard";
 import RecordsPanel from "@/components/RecordsPanel";
 import SensorPane from "@/components/SensorPane";
+import DashboardSkeleton from "@/components/DashboardSkeleton";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle, FlaskConical, RefreshCw } from "lucide-react";
 import { fmtDate } from "@/lib/format";
 
 export default function Page() {
@@ -38,9 +41,11 @@ export default function Page() {
     load();
   }, [load]);
 
-  if (loading && !state) return <Splash />;
+  if (loading && !state) return <DashboardSkeleton />;
   if (error && !state) return <ErrorScreen message={error} onRetry={() => load()} />;
   if (!state) return null;
+
+  const forecastOnly = state.series.length > 0 && state.series.every((p) => p.is_forecast);
 
   return (
     <div className="min-h-screen">
@@ -48,8 +53,20 @@ export default function Page() {
 
       <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 lg:px-8 lg:py-8">
         {error && (
-          <div className="rounded-xl border border-amber-400/40 bg-amber-400/10 px-4 py-2 text-sm text-amber-500">
+          <div className="flex items-center gap-2 rounded-lg border border-status-soon/30 bg-status-soon/[0.08] px-4 py-2 text-sm text-status-soon">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
             Showing last-known data — refresh failed: {error}
+          </div>
+        )}
+        {state.site.demo_mode && (
+          <div className="flex items-center gap-2 rounded-lg border border-hairline bg-soil-soft/40 px-4 py-2 text-sm text-soil-deep">
+            <FlaskConical className="h-4 w-4 shrink-0" />
+            <span><span className="font-medium">Demo data</span> — a sample season. Point <code className="rounded bg-ink/5 px-1 font-mono text-xs">SHEET_ID</code> at your published sheet to go live.</span>
+          </div>
+        )}
+        {forecastOnly && (
+          <div className="rounded-lg border border-water/25 bg-water/[0.06] px-4 py-2 text-sm text-water">
+            Forecast only — no actual weather logged yet this season, so values shown are projections.
           </div>
         )}
         <AlertsBar alerts={state.alerts} />
@@ -115,36 +132,22 @@ function Footer({ state }: { state: StateResponse }) {
   );
 }
 
-function Splash() {
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="flex flex-col items-center gap-3 text-ink/50">
-        <svg viewBox="0 0 24 24" className="h-8 w-8 animate-spin text-leaf-500 fill-none stroke-current" strokeWidth={2}>
-          <path d="M21 12a9 9 0 1 1-2.6-6.4" strokeLinecap="round" />
-        </svg>
-        <span className="text-sm">Loading field state…</span>
-      </div>
-    </div>
-  );
-}
-
 function ErrorScreen({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <div className="flex min-h-screen items-center justify-center p-6">
-      <div className="card max-w-md p-8 text-center">
-        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-clay-500/10 text-clay-500">
-          <svg viewBox="0 0 24 24" className="h-6 w-6 fill-none stroke-current" strokeWidth={2}>
-            <path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+      <div className="max-w-md rounded-xl2 border border-hairline bg-card p-8 text-center shadow-card">
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-status-now/[0.1] text-status-now">
+          <AlertTriangle className="h-6 w-6" />
         </div>
         <h2 className="text-lg font-semibold text-ink">Couldn’t reach the API</h2>
-        <p className="mt-2 text-sm text-ink/60">{message}</p>
-        <p className="mt-2 text-xs text-ink/40">
-          Is the backend running at <code className="rounded bg-black/5 px-1">{process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000"}</code>?
+        <p className="mt-2 text-sm text-muted">{message}</p>
+        <p className="mt-2 font-mono text-xs text-muted/70">
+          Is the backend running at <code className="rounded bg-ink/5 px-1">{process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000"}</code>?
         </p>
-        <button onClick={onRetry} className="mt-5 chip bg-leaf-600 text-white hover:bg-leaf-700">
+        <Button onClick={onRetry} className="mt-5">
+          <RefreshCw className="h-3.5 w-3.5" />
           Retry
-        </button>
+        </Button>
       </div>
     </div>
   );

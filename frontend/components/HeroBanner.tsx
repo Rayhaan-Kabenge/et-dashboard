@@ -3,9 +3,10 @@
 import { Droplet, Droplets, CircleCheck, CircleDashed, ArrowDown } from "lucide-react";
 import type { StateResponse } from "@/lib/types";
 import { statusOf, STATUS_META, type Status } from "@/lib/decision";
-import { useUnits, fmtDepthValue, unitLabel } from "@/lib/units";
+import { useUnits, toDisplay, unitLabel } from "@/lib/units";
 import { fmtDateLong } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
+import { CountUp } from "@/components/CountUp";
 
 const ICON: Record<Status, typeof Droplet> = {
   now: Droplet,
@@ -25,8 +26,9 @@ export default function HeroBanner({ state }: { state: StateResponse }) {
   const headroom = d.headroom; // ad - depletion (mm), already computed by the API
   const past = headroom != null && headroom < 0;
   const headroomLabel = status === "none" ? "AD not defined" : past ? "past AD" : "to AD";
-  const headroomValue =
-    status === "none" || headroom == null ? "—" : fmtDepthValue(Math.abs(headroom), unit);
+  const headroomNumeric =
+    status === "none" || headroom == null ? null : Math.abs(toDisplay(headroom, unit) as number);
+  const decimals = unit === "in" ? 2 : 1;
 
   return (
     <section
@@ -69,9 +71,9 @@ export default function HeroBanner({ state }: { state: StateResponse }) {
             <div className="stat-label">{headroomLabel}</div>
             <div className="flex items-baseline justify-end gap-1.5">
               <span className="font-mono text-4xl font-semibold tabular-nums" style={{ color: "var(--s)" }}>
-                {headroomValue}
+                {headroomNumeric == null ? "—" : <CountUp value={headroomNumeric} decimals={decimals} />}
               </span>
-              {headroomValue !== "—" && <span className="text-base text-muted">{unitLabel(unit)}</span>}
+              {headroomNumeric != null && <span className="text-base text-muted">{unitLabel(unit)}</span>}
             </div>
           </div>
           <a

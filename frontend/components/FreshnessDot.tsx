@@ -3,16 +3,16 @@
 import type { Freshness } from "@/lib/types";
 import { fmtDate } from "@/lib/format";
 
-// green: fresh; amber: 1 day over threshold-ish; red: stale.
+// green: fresh; amber: aging; red: stale. Paired with a text label (a11y).
 export default function FreshnessDot({ freshness, staleAfter = 2 }: { freshness: Freshness; staleAfter?: number }) {
   const days = freshness.days_since ?? 0;
-  let color = "bg-leaf-500";
+  let color = "var(--status-hold)";
   let label = "Live";
   if (freshness.stale) {
-    color = "bg-clay-500";
+    color = "var(--status-now)";
     label = "Stale";
   } else if (days >= staleAfter) {
-    color = "bg-amber-500";
+    color = "var(--status-soon)";
     label = "Aging";
   }
   const title = `Last actual weather: ${fmtDate(freshness.last_actual_date, {
@@ -23,11 +23,11 @@ export default function FreshnessDot({ freshness, staleAfter = 2 }: { freshness:
 
   return (
     <div className="inline-flex items-center gap-2" title={title}>
-      <span className={`relative flex h-2.5 w-2.5`}>
-        <span className={`absolute inline-flex h-full w-full rounded-full ${color} opacity-60 animate-ping`} />
-        <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${color}`} />
+      <span className="relative flex h-2.5 w-2.5">
+        <span className="absolute inline-flex h-full w-full rounded-full opacity-60 motion-safe:animate-ping" style={{ background: color }} />
+        <span className="relative inline-flex h-2.5 w-2.5 rounded-full" style={{ background: color }} />
       </span>
-      <span className="text-sm text-ink/70">
+      <span className="font-mono text-xs text-muted">
         {label} · {days}d
       </span>
     </div>

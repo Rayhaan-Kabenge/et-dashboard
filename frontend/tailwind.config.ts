@@ -23,12 +23,12 @@ const config: Config = {
         brand: { DEFAULT: "#1F5132", accent: "#2E7D49" },
 
         // --- subject matter: soil + water ---
-        water: { DEFAULT: "#1E6FA8", soft: "#E3EFF7", 400: "#3D8FC4", 500: "#1E6FA8" },
-        soil: { DEFAULT: "#9A6440", deep: "#5E3B26", soft: "#F0E7DE", 400: "#9A6440", 500: "#9A6440", 600: "#5E3B26" },
+        water: { DEFAULT: "#1E6FA8", soft: "#E3EFF7" },
+        soil: { DEFAULT: "#9A6440", deep: "#5E3B26", soft: "#F0E7DE" },
 
         // --- status system (hold / soon / now) — paired with icon + label ---
         status: { hold: "#1F5132", soon: "#C9821F", now: "#C0392B" },
-        amber: { DEFAULT: "#C9821F", 400: "#C9821F", 500: "#C9821F" },
+        amber: "#C9821F",
         danger: "#C0392B",
 
         // --- shadcn semantic aliases (mapped to our palette) ---
@@ -43,12 +43,6 @@ const config: Config = {
         destructive: { DEFAULT: "#C0392B", foreground: "#FFFFFF" },
         popover: { DEFAULT: "#FFFFFF", foreground: "#14201A" },
         "muted-foreground": "#6B7069",
-
-        // --- compatibility shims for not-yet-migrated components (mapped to the
-        //     new palette so the build stays green during the staged rollout) ---
-        leaf: { 50: "#EEF3EF", 100: "#DCE8DF", 400: "#2E7D49", 500: "#2E7D49", 600: "#1F5132", 700: "#173D26" },
-        sky: { 400: "#3D8FC4", 500: "#1E6FA8" },
-        clay: { 400: "#D06149", 500: "#C0392B" },
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],

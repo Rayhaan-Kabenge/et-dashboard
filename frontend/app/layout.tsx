@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { UnitsProvider } from "@/lib/units";
+import ConsoleFilter from "@/components/ConsoleFilter";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const mono = IBM_Plex_Mono({
@@ -19,6 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${inter.variable} ${mono.variable}`}>
       <body className="min-h-screen font-sans antialiased">
+        <ConsoleFilter />
         <UnitsProvider>{children}</UnitsProvider>
       </body>
     </html>
