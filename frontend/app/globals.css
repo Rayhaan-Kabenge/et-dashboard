@@ -4,32 +4,84 @@
 
 :root {
   color-scheme: light;
+
+  /* Design tokens (also exposed as CSS vars for Recharts / inline SVG fills) */
+  --ink: #14201a;
+  --canvas: #fbfaf7;
+  --card: #ffffff;
+  --hairline: #e7e5df;
+  --muted: #6b7069;
+
+  --brand: #1f5132;
+  --brand-accent: #2e7d49;
+
+  --water: #1e6fa8;
+  --water-soft: #e3eff7;
+  --soil: #9a6440;
+  --soil-deep: #5e3b26;
+  --soil-soft: #f0e7de;
+
+  /* status system — single source of truth */
+  --status-hold: #1f5132;
+  --status-soon: #c9821f;
+  --status-now: #c0392b;
+
+  --radius: 12px;
 }
 
 html,
 body {
-  background-color: theme("colors.canvas");
-  color: theme("colors.ink");
+  background-color: var(--canvas);
+  color: var(--ink);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+@layer base {
+  * {
+    @apply border-hairline;
+  }
 }
 
 @layer components {
+  /* compatibility classes for components not yet migrated to ui/* primitives */
   .card {
-    @apply rounded-xl2 bg-white shadow-card border border-black/5;
+    @apply rounded-xl2 border border-hairline bg-card shadow-card;
   }
   .chip {
     @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium;
   }
   .stat-label {
-    @apply text-xs font-medium uppercase tracking-wide text-ink/50;
+    @apply text-[11px] font-medium uppercase tracking-wide text-muted;
   }
   .stat-value {
     @apply text-2xl font-semibold tabular-nums text-ink;
   }
+  /* technical/data readouts use the mono face */
+  .data {
+    @apply font-mono tabular-nums;
+  }
 }
 
-/* recharts focus outlines off for a cleaner look */
+/* every number that changes should be tabular */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* recharts cleanup */
 .recharts-wrapper:focus,
 .recharts-surface:focus {
   outline: none;
+}
+
+/* respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
