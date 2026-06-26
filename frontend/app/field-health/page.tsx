@@ -11,6 +11,7 @@ import { getEt } from "@/lib/field/api";
 import type { StateResponse } from "@/lib/types";
 import type { ETResponse } from "@/lib/field/types";
 import FieldMeta from "@/components/field/FieldMeta";
+import FieldStats from "@/components/field/FieldStats";
 import IndexTimeline from "@/components/field/IndexTimeline";
 import LatestImage from "@/components/field/LatestImage";
 import ETOverlay from "@/components/field/ETOverlay";
@@ -135,6 +136,7 @@ function Body() {
       ) : field ? (
         <>
           <FieldMeta />
+          <FieldStats range={imageRange} et={et} etLoading={etLoading} />
           <IndexTimeline stages={stages} onRangeChange={setImageRange} />
           <LatestImage range={imageRange} />
           <ETOverlay etcDaily={etcDaily} range={imageRange} et={et} etLoading={etLoading} />
