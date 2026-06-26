@@ -63,6 +63,28 @@ class ETResponse(BaseModel):
     note: Optional[str] = None
 
 
+class EngineContext(BaseModel):
+    """Engine-side numbers — supplied by the FRONTEND (from /api/state), never
+    computed here."""
+    stage: Optional[str] = None
+    dap: Optional[int] = None
+    depletion_mm: Optional[float] = None
+    ad_mm: Optional[float] = None
+    headroom_mm: Optional[float] = None
+    decision: Optional[str] = None
+    modeled_etc_cum_mm: Optional[float] = None
+
+
+class SummaryRequest(BaseModel):
+    range: dict[str, str] = {}          # {start, end}
+    index: str = "NDRE"
+    engine_context: EngineContext = EngineContext()
+
+
 class SummaryResponse(BaseModel):
-    status: str                     # "stub" in v1
-    message: str
+    status: str                          # "ok" | "unconfigured" | "error"
+    summary_text: Optional[str] = None
+    generated_at: Optional[str] = None
+    model: Optional[str] = None
+    inputs_fingerprint: Optional[str] = None
+    message: Optional[str] = None

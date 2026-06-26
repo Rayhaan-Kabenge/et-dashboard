@@ -60,9 +60,9 @@ export async function getEt(fieldId: string, range: { start: string; end: string
   return asJson<ETResponse>(await fetch(`${BASE}/${fieldId}/et?${q}`, { cache: "no-store" }));
 }
 
-export async function postSummary(fieldId: string, body?: unknown): Promise<any> {
+export async function postSummary(fieldId: string, body?: unknown, force = false): Promise<any> {
   return asJson(
-    await fetch(`${BASE}/${fieldId}/summary`, {
+    await fetch(`${BASE}/${fieldId}/summary${force ? "?force=1" : ""}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body ?? {}),

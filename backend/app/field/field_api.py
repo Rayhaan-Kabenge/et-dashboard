@@ -16,7 +16,8 @@ from ..config import get_settings
 from . import field_store, indices, openet, summary as summary_svc
 from .geometry import validate_polygon
 from .schemas import (
-    ETPoint, ETResponse, Field, FieldCreate, FieldImage, IndexPoint, IndexSeries, SummaryResponse)
+    ETPoint, ETResponse, Field, FieldCreate, FieldImage, IndexPoint, IndexSeries,
+    SummaryRequest, SummaryResponse)
 from .sentinel import SentinelClient, SentinelError
 
 router = APIRouter(prefix="/api/field", tags=["field-health"])
@@ -136,10 +137,11 @@ def _require_field(field_id: str) -> Field:
 
 
 @router.post("/{field_id}/summary", response_model=SummaryResponse)
-def field_summary(field_id: str):
-    """v1 stub — returns a 'coming soon' placeholder. v2 assembles computed values
-    and calls Anthropic."""
-    return summary_svc.build_summary(_require_field(field_id))
+def field_summary(field_id: str, body: SummaryRequest = SummaryRequest(), force: bool = False):
+    """Claude-written plain-language summary of the supplied engine numbers + this
+    field's cached index/ET. Cached by input fingerprint; ?force=1 regenerates.
+    No key / failure -> graceful note (never a 500)."""
+    return summary_svc.build_summary(_require_field(field_id), body, force=force)
 
 
 @router.get("/{field_id}/et", response_model=ETResponse)

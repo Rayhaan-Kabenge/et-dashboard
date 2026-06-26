@@ -94,6 +94,26 @@ function Body() {
   // undefined until the timeline reports; then { start, end }.
   const [imageRange, setImageRange] = useState<{ start: string; end: string } | undefined>(undefined);
   const { et, loading: etLoading } = useEt(field?.id, imageRange);
+
+  // engine-side context for the AI summary — all from /api/state (frontend), incl.
+  // the modeled cumulative ETc accumulated over the selected range.
+  const modeledEtcCum =
+    imageRange && engine
+      ? etcDaily
+          .filter((p) => p.etc != null && p.date >= imageRange.start && p.date <= imageRange.end)
+          .reduce((a, p) => a + (p.etc as number), 0)
+      : null;
+  const engineContext = engine
+    ? {
+        stage: engine.growth_stage?.stage ?? null,
+        dap: engine.growth_stage?.dap ?? engine.today?.dap ?? null,
+        depletion_mm: engine.decision?.depletion ?? null,
+        ad_mm: engine.decision?.ad ?? null,
+        headroom_mm: engine.decision?.headroom ?? null,
+        decision: engine.decision?.recommendation ?? null,
+        modeled_etc_cum_mm: modeledEtcCum != null ? Math.round(modeledEtcCum * 10) / 10 : null,
+      }
+    : null;
   return (
     <>
       {error && (
@@ -113,7 +133,7 @@ function Body() {
           <LatestImage range={imageRange} />
           <ETOverlay etcDaily={etcDaily} range={imageRange} et={et} etLoading={etLoading} />
           <ReferenceETCheck etrDaily={etrDaily} range={imageRange} et={et} etLoading={etLoading} />
-          <FieldSummary />
+          <FieldSummary range={imageRange} index="NDRE" engineContext={engineContext} />
         </>
       ) : (
         <div className="rounded-xl2 border border-dashed border-hairline bg-card p-6 text-center text-sm text-muted">
