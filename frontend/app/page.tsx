@@ -7,6 +7,7 @@ import TopBar from "@/components/TopBar";
 import AlertsBar from "@/components/AlertsBar";
 import HeroBanner from "@/components/HeroBanner";
 import RootZoneMeter from "@/components/RootZoneMeter";
+import RecommendationPanel from "@/components/RecommendationPanel";
 import WeatherBar from "@/components/WeatherBar";
 import DepletionChart from "@/components/DepletionChart";
 import GrowthStageCard from "@/components/GrowthStageCard";
@@ -74,6 +75,8 @@ export default function Page() {
         <HeroBanner state={state} />
 
         <RootZoneMeter state={state} />
+
+        <RecommendationPanel state={state} />
 
         <WeatherBar state={state} />
 
