@@ -50,6 +50,19 @@ class FieldImage(BaseModel):
     note: Optional[str] = None
 
 
+class ETPoint(BaseModel):
+    date: str
+    mm: float
+
+
+class ETResponse(BaseModel):
+    et_actual: list[ETPoint] = []        # OpenET daily actual ET (mm)
+    etr_gridmet: list[ETPoint] = []      # gridMET alfalfa reference ET (mm) via OpenET
+    provisional_from: Optional[str] = None
+    coverage: str = "ok"                 # "ok" | "out_of_area"
+    note: Optional[str] = None
+
+
 class SummaryResponse(BaseModel):
     status: str                     # "stub" in v1
     message: str

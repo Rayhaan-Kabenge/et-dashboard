@@ -13,9 +13,10 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 
 from ..config import get_settings
-from . import field_store, gridmet, indices, openet, summary as summary_svc
+from . import field_store, indices, openet, summary as summary_svc
 from .geometry import validate_polygon
-from .schemas import Field, FieldCreate, FieldImage, IndexPoint, IndexSeries, SummaryResponse
+from .schemas import (
+    ETPoint, ETResponse, Field, FieldCreate, FieldImage, IndexPoint, IndexSeries, SummaryResponse)
 from .sentinel import SentinelClient, SentinelError
 
 router = APIRouter(prefix="/api/field", tags=["field-health"])
@@ -141,16 +142,17 @@ def field_summary(field_id: str):
     return summary_svc.build_summary(_require_field(field_id))
 
 
-# --- v2 scaffolds (typed empty results; NOT wired into the UI yet) -----------
-@router.get("/{field_id}/et")
-def actual_et(field_id: str, start: Optional[str] = None, end: Optional[str] = None):
+@router.get("/{field_id}/et", response_model=ETResponse)
+def field_et(field_id: str, start: Optional[str] = None, end: Optional[str] = None):
+    """OpenET actual ET + gridMET reference ET for the field/range. The modeled
+    cumulative ETc and station ETr it's compared against arrive from the frontend,
+    not here. Missing key / out-of-coverage / failure -> empty + note (never 500)."""
     field = _require_field(field_id)
-    return {"field_id": field_id, "source": "openet",
-            "points": openet.actual_et(field, start or "", end or ""), "note": "v2 — not yet enabled"}
-
-
-@router.get("/{field_id}/gridmet")
-def reference_et(field_id: str, start: Optional[str] = None, end: Optional[str] = None):
-    field = _require_field(field_id)
-    return {"field_id": field_id, "source": "gridmet",
-            "points": gridmet.reference_et(field, start or "", end or ""), "note": "v2 — not yet enabled"}
+    today = date.today()
+    end = end or today.isoformat()
+    start = start or (today - timedelta(days=120)).isoformat()
+    data = openet.get_et(field, start, end)
+    return ETResponse(
+        et_actual=[ETPoint(**p) for p in data["et_actual"]],
+        etr_gridmet=[ETPoint(**p) for p in data["etr_gridmet"]],
+        provisional_from=data["provisional_from"], coverage=data["coverage"], note=data.get("note"))
