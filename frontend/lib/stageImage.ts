@@ -8,24 +8,45 @@ export const AVAILABLE_STAGE_SLUGS = new Set([
   "vt_r1", "r2", "r3", "r4", "r4_7", "r5_25", "r5_75", "r6",
 ]);
 
-// lowercase; "/", ":" and "." -> "_" (e.g. "VT/R1" -> "vt_r1", "R4.7" -> "r4_7").
+// Sorghum stage photos in frontend/public/stages/sorghum/ (labels match the sheet).
+export const SORGHUM_STAGE_SLUGS = new Set([
+  "emergence", "3-leaf", "4-leaf", "5-leaf", "gdp", "flag_leaf",
+  "boot", "heading", "flowering", "soft_dough", "hard_dough", "black_layer",
+]);
+
+// Per-crop image set + public path. Corn keeps the existing /stages root; each
+// other crop is namespaced under /stages/<crop>/.
+function cropImages(crop: string): { slugs: Set<string>; base: string } {
+  if (crop === "sorghum") return { slugs: SORGHUM_STAGE_SLUGS, base: "/stages/sorghum" };
+  return { slugs: AVAILABLE_STAGE_SLUGS, base: "/stages" };
+}
+
+// lowercase; drop parenthetical notes ("Soft dough (forage harvest)" -> "soft_dough");
+// "/", ":" and "." -> "_" (e.g. "VT/R1" -> "vt_r1", "R4.7" -> "r4_7"). Hyphens kept.
 export function stageSlug(label: string): string {
-  return label.toLowerCase().trim().replace(/[/:.\s]+/g, "_").replace(/^_+|_+$/g, "");
+  return label
+    .toLowerCase()
+    .trim()
+    .replace(/\([^)]*\)/g, "")
+    .replace(/[/:.\s]+/g, "_")
+    .replace(/^_+|_+$/g, "");
 }
 
 /**
- * Resolve the /stages image path for `label`. If that stage has no image, walk
- * backward through `order` (phenological order) and return the most recent stage
- * that does. Returns null when nothing resolves (caller renders a fallback).
+ * Resolve the image path for `label` in the active crop's stage set. If that
+ * stage has no image, walk backward through `order` (phenological order) and
+ * return the most recent stage that does. Returns null when nothing resolves
+ * (caller renders the generic illustration fallback).
  */
-export function resolveStageImage(label: string, order: string[]): string | null {
+export function resolveStageImage(label: string, order: string[], crop: string = "corn"): string | null {
+  const { slugs, base } = cropImages(crop);
   const direct = stageSlug(label);
-  if (AVAILABLE_STAGE_SLUGS.has(direct)) return `/stages/${direct}.png`;
+  if (slugs.has(direct)) return `${base}/${direct}.png`;
   const idx = order.indexOf(label);
   if (idx >= 0) {
     for (let i = idx - 1; i >= 0; i--) {
       const s = stageSlug(order[i]);
-      if (AVAILABLE_STAGE_SLUGS.has(s)) return `/stages/${s}.png`;
+      if (slugs.has(s)) return `${base}/${s}.png`;
     }
   }
   return null;

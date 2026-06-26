@@ -4,8 +4,12 @@ import type { StateResponse } from "./types";
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, "") || "http://localhost:8000";
 
-export async function fetchState(refresh = false): Promise<StateResponse> {
-  const url = `${API_BASE}/api/state${refresh ? "?refresh=1" : ""}`;
+export async function fetchState(refresh = false, crop?: string): Promise<StateResponse> {
+  const q = new URLSearchParams();
+  if (refresh) q.set("refresh", "1");
+  if (crop) q.set("crop", crop);
+  const qs = q.toString();
+  const url = `${API_BASE}/api/state${qs ? `?${qs}` : ""}`;
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) {
     let detail = `${res.status} ${res.statusText}`;
@@ -18,4 +22,21 @@ export async function fetchState(refresh = false): Promise<StateResponse> {
     throw new Error(detail);
   }
   return res.json();
+}
+
+export interface CropOption {
+  id: string;
+  label: string;
+}
+
+// Registered crops for the toggle (server-side allow-list). Falls back to corn.
+export async function fetchCrops(): Promise<CropOption[]> {
+  try {
+    const res = await fetch(`${API_BASE}/api/crops`, { cache: "no-store" });
+    if (!res.ok) throw new Error(String(res.status));
+    const list = await res.json();
+    return Array.isArray(list) && list.length ? list : [{ id: "corn", label: "Corn" }];
+  } catch {
+    return [{ id: "corn", label: "Corn" }];
+  }
 }

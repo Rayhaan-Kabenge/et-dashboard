@@ -14,6 +14,15 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 DEFAULT_SHEET_ID = "1USpOtSe83zCZdXUz19MnhOvIxZDpZI-8ak20AIEX320"
 _DEMO_TOKENS = {"", "demo", "none", "sample", "off"}
 
+# ---- Crop registry (API layer) ---------------------------------------------
+# Named crops → Google Sheet id, same six-tab schema, same physical field. Corn
+# is the default and uses the env SHEET_ID; sorghum is a separate sheet. Kept as
+# a dict here so the backing store can later become a DB/file without changing
+# any endpoint — callers only go through resolve_crop() / available_crops().
+DEFAULT_CROP = "corn"
+SORGHUM_SHEET_ID = "1FMB6TTk817W2TqfJRkKftKtNF2hAXxGRIbKfFqgF9kw"
+CROP_LABELS = {"corn": "Corn", "sorghum": "Sorghum"}
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
@@ -90,3 +99,29 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+def _crop_registry(settings: Optional[Settings] = None) -> dict[str, str]:
+    """crop name → sheet id. Corn binds to the env SHEET_ID (the default sheet)."""
+    s = settings or get_settings()
+    return {
+        "corn": s.sheet_id or DEFAULT_SHEET_ID,
+        "sorghum": SORGHUM_SHEET_ID,
+    }
+
+
+def resolve_crop(name: Optional[str], settings: Optional[Settings] = None) -> str:
+    """Resolve a crop name to its sheet id through the allow-list registry.
+
+    Unknown / missing crop falls back to the default crop (corn). Never returns
+    an arbitrary id — only ids that are registered here are reachable.
+    """
+    reg = _crop_registry(settings)
+    key = (name or DEFAULT_CROP).strip().lower()
+    return reg.get(key, reg[DEFAULT_CROP])
+
+
+def available_crops(settings: Optional[Settings] = None) -> list[dict]:
+    """The registered crops the frontend may offer, in display order."""
+    reg = _crop_registry(settings)
+    return [{"id": c, "label": CROP_LABELS.get(c, c.title())} for c in reg]

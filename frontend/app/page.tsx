@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { AlertTriangle, FlaskConical, RefreshCw } from "lucide-react";
 import { fmtDate } from "@/lib/format";
 import CardChevron from "@/components/CardChevron";
+import { useCrop } from "@/lib/crop";
 
 export default function Page() {
   const [state, setState] = useState<StateResponse | null>(null);
@@ -25,12 +26,13 @@ export default function Page() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [depOpen, setDepOpen] = useState(true);
+  const { crop } = useCrop();
 
   const load = useCallback(async (refresh = false) => {
     try {
       refresh ? setRefreshing(true) : setLoading(true);
       setError(null);
-      const data = await fetchState(refresh);
+      const data = await fetchState(refresh, crop);
       setState(data);
     } catch (e: any) {
       setError(e?.message ?? "Failed to load dashboard");
@@ -38,9 +40,10 @@ export default function Page() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [crop]);
 
   useEffect(() => {
+    setState(null); // crop change (or mount) → show the skeleton while the new crop loads
     load();
   }, [load]);
 
@@ -98,7 +101,7 @@ export default function Page() {
             </div>
             {depOpen && <DepletionChart state={state} />}
           </div>
-          <GrowthStageCard state={state} />
+          <GrowthStageCard state={state} crop={crop} />
         </div>
 
         <RecordsPanel state={state} />

@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import CardChevron from "@/components/CardChevron";
 
-export default function GrowthStageCard({ state }: { state: StateResponse }) {
+export default function GrowthStageCard({ state, crop = "corn" }: { state: StateResponse; crop?: string }) {
   const [open, setOpen] = useState(true);
   const g = state.growth_stage;
   if (!g) return null;
@@ -27,8 +27,8 @@ export default function GrowthStageCard({ state }: { state: StateResponse }) {
   const daysToNext =
     next && today ? Math.max(0, Math.round((+new Date(next.date) - +new Date(today)) / 86400000)) : null;
 
-  const curPhoto = resolveStageImage(g.stage, order.length ? order : [g.stage]);
-  const nextPhoto = next ? resolveStageImage(next.label, order) : null;
+  const curPhoto = resolveStageImage(g.stage, order.length ? order : [g.stage], crop);
+  const nextPhoto = next ? resolveStageImage(next.label, order, crop) : null;
 
   return (
     <section className="flex flex-col rounded-xl2 border border-hairline bg-card shadow-card">

@@ -7,6 +7,7 @@ import { Satellite } from "lucide-react";
 import { FIELD_HEALTH_ENABLED } from "@/lib/features";
 import { FieldProvider, useField } from "@/lib/field/context";
 import { fetchState } from "@/lib/api";
+import { useCrop } from "@/lib/crop";
 import { getEt } from "@/lib/field/api";
 import type { StateResponse } from "@/lib/types";
 import type { ETResponse } from "@/lib/field/types";
@@ -21,11 +22,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 // The irrigation /api/state is fetched here on the FRONTEND and passed into the
 // field panels as props (stage markers, daily modeled ETc, daily station ETr,
 // decision context). The Field Health backend never calls the engine.
-function useEngineState(): StateResponse | null {
+function useEngineState(crop: string): StateResponse | null {
   const [state, setState] = useState<StateResponse | null>(null);
   useEffect(() => {
-    fetchState().then(setState).catch(() => setState(null));
-  }, []);
+    // engine overlays (stage markers, modeled ETc) follow the active crop;
+    // the field, map, basemap, and NDRE/NDVI indices are crop-agnostic.
+    fetchState(false, crop).then(setState).catch(() => setState(null));
+  }, [crop]);
   return state;
 }
 
@@ -86,7 +89,8 @@ export default function FieldHealthPage() {
 
 function Body() {
   const { field, loading, error, cleared } = useField();
-  const engine = useEngineState();
+  const { crop } = useCrop();
+  const engine = useEngineState(crop);
   const stages = (engine?.stages ?? []).map((x) => ({ label: x.label, date: x.date }));
   const etcDaily = (engine?.series ?? []).map((p) => ({ date: p.date, etc: p.etc }));
   const etrDaily = (engine?.series ?? []).map((p) => ({ date: p.date, etr: p.etr }));
