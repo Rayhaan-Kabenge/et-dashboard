@@ -21,6 +21,21 @@ export async function getActiveField(): Promise<Field | null> {
   return asJson<Field | null>(await fetch(BASE, { cache: "no-store" }));
 }
 
+export interface GeocodeResult {
+  display_name: string;
+  lat: number;
+  lon: number;
+  bbox?: [number, number, number, number] | null; // [south, north, west, east]
+}
+
+// View-only map navigation. Server-side Nominatim proxy; never touches the field.
+export async function geocode(q: string): Promise<GeocodeResult[]> {
+  const r = await asJson<{ results: GeocodeResult[] }>(
+    await fetch(`${BASE}/geocode?q=${encodeURIComponent(q)}`, { cache: "no-store" })
+  );
+  return r.results ?? [];
+}
+
 export async function deleteField(fieldId: string): Promise<{ cleared: boolean }> {
   return asJson<{ cleared: boolean }>(await fetch(`${BASE}/${fieldId}`, { method: "DELETE" }));
 }

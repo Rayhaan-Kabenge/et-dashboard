@@ -24,6 +24,17 @@ class FieldCreate(BaseModel):
     crop: Optional[str] = None
 
 
+class GeocodeResult(BaseModel):
+    display_name: str
+    lat: float
+    lon: float
+    bbox: Optional[list[float]] = None  # [south, north, west, east]
+
+
+class GeocodeResponse(BaseModel):
+    results: list[GeocodeResult]
+
+
 class IndexPoint(BaseModel):
     date: str
     mean: float

@@ -6,10 +6,12 @@ import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MapContainer, TileLayer, GeoJSON, useMap } from "react-leaflet";
 import "@geoman-io/leaflet-geoman-free";
+import type { Map as LeafletMap } from "leaflet";
 import { Upload, Save, X, Pencil } from "lucide-react";
 import { useField } from "@/lib/field/context";
 import type { Field, GeoPolygon } from "@/lib/field/types";
 import { Button } from "@/components/ui/button";
+import MapSearch, { type FlyTo } from "./MapSearch";
 
 const ESRI =
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
@@ -80,16 +82,49 @@ function FitTo({ field, pending }: { field: Field | null; pending: GeoPolygon | 
   return null;
 }
 
-export default function FieldMap() {
+// On first load with no active field, open near the working area — the sheet's
+// site coordinate (same lat/lon the engine/forecast use), at a regional zoom.
+// Runs once; never fights the user's panning, and yields to an active field.
+function InitialCenter({
+  siteCenter,
+  hasField,
+}: {
+  siteCenter: [number, number] | null;
+  hasField: boolean;
+}) {
+  const map = useMap();
+  const done = useRef(false);
+  useEffect(() => {
+    if (done.current || hasField || !siteCenter) return;
+    map.setView(siteCenter, 10);
+    done.current = true;
+  }, [siteCenter, hasField, map]);
+  return null;
+}
+
+export default function FieldMap({ siteCenter = null }: { siteCenter?: [number, number] | null }) {
   const { field, saveField, saving } = useField();
   const [pending, setPending] = useState<GeoPolygon | null>(null);
   const [name, setName] = useState("");
   const [crop, setCrop] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const mapRef = useRef<LeafletMap | null>(null);
 
   const center: [number, number] = field ? [field.centroid[1], field.centroid[0]] : [39.5, -98.35];
   const zoom = field ? 14 : 4;
+
+  // View-only navigation from the search box: pans/zooms the map, nothing else.
+  const flyTo = useCallback<FlyTo>((lat, lon, bbox) => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (bbox) {
+      const [s, n, w, e] = bbox; // [south, north, west, east]
+      map.fitBounds([[s, w], [n, e]], { padding: [24, 24], maxZoom: 16 });
+    } else {
+      map.flyTo([lat, lon], 14);
+    }
+  }, []);
 
   const onUpload = useCallback((file: File) => {
     const reader = new FileReader();
@@ -119,7 +154,7 @@ export default function FieldMap() {
 
   return (
     <div className="relative overflow-hidden rounded-xl2 border border-hairline bg-card">
-      <MapContainer center={center} zoom={zoom} scrollWheelZoom className="h-[440px] w-full" style={{ background: "#0c1a12" }}>
+      <MapContainer ref={mapRef} center={center} zoom={zoom} scrollWheelZoom className="h-[440px] w-full" style={{ background: "#0c1a12" }}>
         <TileLayer url={ESRI} maxZoom={19} attribution='Imagery &copy; <a href="https://www.esri.com">Esri</a>, Maxar, Earthstar Geographics' />
         {field && (
           <GeoJSON key={`active-${field.id}`} data={field.geometry as any} style={{ color: "#FBFAF7", weight: 2.5, fillColor: "#2E7D49", fillOpacity: 0.12 }} />
@@ -129,9 +164,10 @@ export default function FieldMap() {
         )}
         <DrawControls onDraw={setPending} />
         <FitTo field={field} pending={pending} />
+        <InitialCenter siteCenter={siteCenter} hasField={!!field} />
       </MapContainer>
 
-      {/* upload control (top-right overlay) */}
+      {/* search + upload controls (top-right overlay) */}
       <div className="pointer-events-none absolute right-3 top-3 z-[500] flex flex-col items-end gap-2">
         <input
           ref={fileRef}
@@ -140,10 +176,13 @@ export default function FieldMap() {
           className="hidden"
           onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])}
         />
-        <Button size="sm" variant="outline" className="pointer-events-auto shadow-card" onClick={() => fileRef.current?.click()}>
-          <Upload className="h-3.5 w-3.5" />
-          Upload GeoJSON
-        </Button>
+        <div className="flex items-center gap-2">
+          <MapSearch onFly={flyTo} />
+          <Button size="sm" variant="outline" className="pointer-events-auto shadow-card" onClick={() => fileRef.current?.click()}>
+            <Upload className="h-3.5 w-3.5" />
+            Upload GeoJSON
+          </Button>
+        </div>
         {!field && !pending && (
           <div className="pointer-events-auto flex items-center gap-1.5 rounded-lg bg-card/95 px-2.5 py-1.5 text-xs text-muted shadow-card">
             <Pencil className="h-3.5 w-3.5" /> use the draw tool (top-left) or upload

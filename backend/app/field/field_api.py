@@ -13,11 +13,11 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 
 from ..config import get_settings
-from . import field_store, indices, openet, summary as summary_svc
+from . import field_store, geocode, indices, openet, summary as summary_svc
 from .geometry import validate_polygon
 from .schemas import (
-    ETPoint, ETResponse, Field, FieldCreate, FieldImage, IndexPoint, IndexSeries,
-    SummaryRequest, SummaryResponse)
+    ETPoint, ETResponse, Field, FieldCreate, FieldImage, GeocodeResponse, IndexPoint,
+    IndexSeries, SummaryRequest, SummaryResponse)
 from .sentinel import SentinelClient, SentinelError
 
 router = APIRouter(prefix="/api/field", tags=["field-health"])
@@ -28,6 +28,16 @@ IMAGE_TTL = 6 * 3600  # seconds — cache the "latest" image briefly
 @router.get("/health")
 def health():
     return {"status": "ok", "module": "field-health"}
+
+
+@router.get("/geocode", response_model=GeocodeResponse)
+def geocode_search(q: str = ""):
+    """View-only map navigation: proxy free-text/place lookups to OSM Nominatim.
+
+    Pans/zooms the map only — it never sets, creates, or modifies the active
+    field or any engine coordinate. Failures / no matches return {results: []}.
+    """
+    return {"results": geocode.search(q)}
 
 
 @router.get("", response_model=Optional[Field])

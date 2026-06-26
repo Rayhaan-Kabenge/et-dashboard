@@ -122,7 +122,13 @@ function Body() {
         </div>
       )}
 
-      <FieldMap />
+      <FieldMap
+        siteCenter={
+          engine?.site && engine.site.longitude != null
+            ? [engine.site.latitude, engine.site.longitude]
+            : null
+        }
+      />
 
       {loading ? (
         <Skeleton className="h-20 w-full rounded-xl2" />
