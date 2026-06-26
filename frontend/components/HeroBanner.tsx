@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Droplet, Droplets, CircleCheck, CircleDashed, ArrowDown } from "lucide-react";
 import type { StateResponse } from "@/lib/types";
 import { statusOf, STATUS_META, type Status } from "@/lib/decision";
@@ -7,6 +8,7 @@ import { useUnits, toDisplay, unitLabel } from "@/lib/units";
 import { fmtDateLong } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { CountUp } from "@/components/CountUp";
+import CardChevron from "@/components/CardChevron";
 
 const ICON: Record<Status, typeof Droplet> = {
   now: Droplet,
@@ -17,6 +19,7 @@ const ICON: Record<Status, typeof Droplet> = {
 
 export default function HeroBanner({ state }: { state: StateResponse }) {
   const { unit } = useUnits();
+  const [open, setOpen] = useState(true);
   const d = state.decision;
   if (!d) return null;
   const status = statusOf(d);
@@ -42,6 +45,7 @@ export default function HeroBanner({ state }: { state: StateResponse }) {
 
       <div className="relative flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-7 sm:pl-8">
         <div className="flex items-start gap-4">
+          <CardChevron open={open} onClick={() => setOpen((o) => !o)} label="decision" className="mt-2.5" />
           <span
             className="mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full"
             style={{ background: "color-mix(in srgb, var(--s) 14%, transparent)", color: "var(--s)" }}
@@ -57,15 +61,18 @@ export default function HeroBanner({ state }: { state: StateResponse }) {
               <span className="text-lg text-ink/75 sm:text-xl">{meta.sub.toLowerCase()}</span>
               {d.estimated && <Badge variant="soon">estimated</Badge>}
             </div>
+            {open && (
             <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
               <span className="font-mono">{fmtDateLong(state.today?.date)}</span>
               <span className="text-hairline">·</span>
               <span>{d.recommendation}</span>
             </p>
+            )}
           </div>
         </div>
 
         {/* headroom readout, points down to the meter */}
+        {open && (
         <div className="flex items-end gap-4 sm:flex-col sm:items-end sm:gap-1">
           <div className="text-right">
             <div className="stat-label">{headroomLabel}</div>
@@ -84,6 +91,7 @@ export default function HeroBanner({ state }: { state: StateResponse }) {
             <ArrowDown className="h-3 w-3 transition-transform group-hover:translate-y-0.5" />
           </a>
         </div>
+        )}
       </div>
     </section>
   );

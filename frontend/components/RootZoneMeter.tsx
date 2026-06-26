@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { Droplet, Droplets, CircleCheck, CircleDashed, CalendarClock, TrendingUp } from "lucide-react";
 import type { StateResponse } from "@/lib/types";
 import { statusOf, STATUS_META, type Status } from "@/lib/decision";
 import { useUnits, fmtDepth, fmtDepthValue, unitLabel } from "@/lib/units";
 import { fmtDate } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
+import CardChevron from "@/components/CardChevron";
 
 const ICON: Record<Status, typeof Droplet> = {
   now: Droplet,
@@ -16,6 +18,7 @@ const ICON: Record<Status, typeof Droplet> = {
 
 export default function RootZoneMeter({ state }: { state: StateResponse }) {
   const { unit } = useUnits();
+  const [open, setOpen] = useState(true);
   const d = state.decision;
   if (!d) return null;
 
@@ -48,9 +51,12 @@ export default function RootZoneMeter({ state }: { state: StateResponse }) {
       aria-label="Root-zone water meter"
     >
       <div className="flex flex-col gap-1 p-5 pb-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="stat-label">Root zone · soil water</div>
-          <h3 className="text-base font-semibold tracking-tight text-ink">Depletion vs allowable</h3>
+        <div className="flex items-center gap-2">
+          <CardChevron open={open} onClick={() => setOpen((o) => !o)} label="Depletion vs allowable" />
+          <div>
+            <div className="stat-label">Root zone · soil water</div>
+            <h3 className="text-base font-semibold tracking-tight text-ink">Depletion vs allowable</h3>
+          </div>
         </div>
         <Badge variant={meta.badge} className="self-start text-[13px]">
           <Icon className="h-3.5 w-3.5" strokeWidth={2.4} />
@@ -58,6 +64,7 @@ export default function RootZoneMeter({ state }: { state: StateResponse }) {
         </Badge>
       </div>
 
+      {open && (
       <div className="p-5 pt-3">
         {/* headline numbers */}
         <div className="mb-4 flex flex-wrap items-end gap-x-8 gap-y-3">
@@ -161,6 +168,7 @@ export default function RootZoneMeter({ state }: { state: StateResponse }) {
           <Readout icon={TrendingUp} label="Recent ETc" value={d.recent_avg_etc != null ? fmtDepth(d.recent_avg_etc, unit) : "—"} hint="mean, last days" />
         </div>
       </div>
+      )}
     </section>
   );
 }

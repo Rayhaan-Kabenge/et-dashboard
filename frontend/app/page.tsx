@@ -17,12 +17,14 @@ import DashboardSkeleton from "@/components/DashboardSkeleton";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, FlaskConical, RefreshCw } from "lucide-react";
 import { fmtDate } from "@/lib/format";
+import CardChevron from "@/components/CardChevron";
 
 export default function Page() {
   const [state, setState] = useState<StateResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [depOpen, setDepOpen] = useState(true);
 
   const load = useCallback(async (refresh = false) => {
     try {
@@ -83,15 +85,18 @@ export default function Page() {
         <div className="grid gap-6 lg:grid-cols-[1.9fr_1fr]">
           <div className="card flex flex-col p-6">
             <div className="mb-2 flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-ink">Depletion forecast</h3>
-                <p className="text-sm text-ink/50">
-                  Root-zone depletion vs allowable depletion · forecast through {fmtDate(state.freshness.forecast_through)}
-                </p>
+              <div className="flex items-center gap-2">
+                <CardChevron open={depOpen} onClick={() => setDepOpen((o) => !o)} label="depletion forecast" />
+                <div>
+                  <h3 className="text-lg font-semibold text-ink">Depletion forecast</h3>
+                  <p className="text-sm text-ink/50">
+                    Root-zone depletion vs allowable depletion · forecast through {fmtDate(state.freshness.forecast_through)}
+                  </p>
+                </div>
               </div>
               <Legend />
             </div>
-            <DepletionChart state={state} />
+            {depOpen && <DepletionChart state={state} />}
           </div>
           <GrowthStageCard state={state} />
         </div>

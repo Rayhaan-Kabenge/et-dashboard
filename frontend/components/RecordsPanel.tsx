@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Download, Droplet, Sprout, CloudRain } from "lucide-react";
 import type { StateResponse } from "@/lib/types";
 import { useUnits, fmtDepth, toDisplay } from "@/lib/units";
@@ -7,9 +8,11 @@ import { fmtDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import CardChevron from "@/components/CardChevron";
 
 export default function RecordsPanel({ state }: { state: StateResponse }) {
   const { unit } = useUnits();
+  const [open, setOpen] = useState(true);
   const s = state.season_summary;
   const events = state.schedule.filter((e) => e.applied > 0);
   const upcoming = state.schedule.filter((e) => e.is_forecast && e.applied === 0).slice(0, 4);
@@ -38,9 +41,12 @@ export default function RecordsPanel({ state }: { state: StateResponse }) {
   return (
     <section className="rounded-xl2 border border-hairline bg-card shadow-card">
       <div className="flex items-center justify-between p-5 pb-4">
-        <div>
-          <div className="stat-label">Records &amp; water budget</div>
-          <h3 className="text-base font-semibold tracking-tight text-ink">Season to date</h3>
+        <div className="flex items-center gap-2">
+          <CardChevron open={open} onClick={() => setOpen((o) => !o)} label="records" />
+          <div>
+            <div className="stat-label">Records &amp; water budget</div>
+            <h3 className="text-base font-semibold tracking-tight text-ink">Season to date</h3>
+          </div>
         </div>
         <Button variant="outline" size="sm" onClick={exportSeriesCsv}>
           <Download className="h-3.5 w-3.5" />
@@ -48,6 +54,7 @@ export default function RecordsPanel({ state }: { state: StateResponse }) {
         </Button>
       </div>
 
+      {open && (
       <div className="grid gap-6 px-5 pb-5 lg:grid-cols-[1.1fr_1fr]">
         {/* water budget */}
         <div>
@@ -106,6 +113,7 @@ export default function RecordsPanel({ state }: { state: StateResponse }) {
           )}
         </div>
       </div>
+      )}
     </section>
   );
 }

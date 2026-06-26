@@ -10,8 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import CardChevron from "@/components/CardChevron";
 
 export default function GrowthStageCard({ state }: { state: StateResponse }) {
+  const [open, setOpen] = useState(true);
   const g = state.growth_stage;
   if (!g) return null;
 
@@ -31,11 +33,14 @@ export default function GrowthStageCard({ state }: { state: StateResponse }) {
   return (
     <section className="flex flex-col rounded-xl2 border border-hairline bg-card shadow-card">
       <div className="flex items-start justify-between p-5 pb-3">
-        <div>
-          <div className="stat-label">Growth stage</div>
-          <div className="mt-0.5 flex items-center gap-2">
-            <span className="text-2xl font-semibold tracking-tight text-brand">{g.stage}</span>
-            {g.estimated && <Badge variant="soon" className="px-2 py-0">open · est.</Badge>}
+        <div className="flex items-start gap-2">
+          <CardChevron open={open} onClick={() => setOpen((o) => !o)} label="growth stage" className="mt-0.5" />
+          <div>
+            <div className="stat-label">Growth stage</div>
+            <div className="mt-0.5 flex items-center gap-2">
+              <span className="text-2xl font-semibold tracking-tight text-brand">{g.stage}</span>
+              {g.estimated && <Badge variant="soon" className="px-2 py-0">open · est.</Badge>}
+            </div>
           </div>
         </div>
         <div className="text-right">
@@ -44,6 +49,7 @@ export default function GrowthStageCard({ state }: { state: StateResponse }) {
         </div>
       </div>
 
+      {open && (<>
       {/* current -> next preview */}
       <div className="px-5">
         {hasNext && next ? (
@@ -91,6 +97,7 @@ export default function GrowthStageCard({ state }: { state: StateResponse }) {
         />
         <Stat label="Season progress" value={`${Math.round(g.season_progress * 100)}%`} />
       </div>
+      </>)}
     </section>
   );
 }

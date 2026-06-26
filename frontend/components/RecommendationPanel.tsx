@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { CalendarClock, Droplet, CloudRain, Sprout, Info } from "lucide-react";
 import type { StateResponse } from "@/lib/types";
 import { useUnits, fmtDepth } from "@/lib/units";
 import { fmtDate } from "@/lib/format";
+import CardChevron from "@/components/CardChevron";
 
 // Pure display. Every value is read straight from /api/state — no water-balance
 // math, no engine changes. These are forward-looking, ADVISORY reads on the
@@ -12,6 +14,7 @@ import { fmtDate } from "@/lib/format";
 // the mm⇄in toggle.
 export default function RecommendationPanel({ state }: { state: StateResponse }) {
   const { unit } = useUnits();
+  const [open, setOpen] = useState(true);
   const d = state.decision;
   if (!d) return null;
 
@@ -28,15 +31,19 @@ export default function RecommendationPanel({ state }: { state: StateResponse })
   return (
     <section className="rounded-xl2 border border-hairline bg-card shadow-card" aria-label="Irrigation recommendations">
       <div className="flex items-center justify-between gap-2 p-5 pb-2">
-        <div>
-          <div className="stat-label">What to do next</div>
-          <h3 className="text-base font-semibold tracking-tight text-ink">Recommendations</h3>
+        <div className="flex items-center gap-2">
+          <CardChevron open={open} onClick={() => setOpen((o) => !o)} label="Recommendations" />
+          <div>
+            <div className="stat-label">What to do next</div>
+            <h3 className="text-base font-semibold tracking-tight text-ink">Recommendations</h3>
+          </div>
         </div>
         <span className="self-start rounded-full border border-hairline bg-soil-soft/40 px-2 py-0.5 text-[11px] font-medium text-muted">
           advisory · forecast projection
         </span>
       </div>
 
+      {open && (<>
       <div className="grid grid-cols-1 gap-3 p-5 pt-3 sm:grid-cols-2">
         {/* 1 · irrigate-by — advisory projection, deferring to the engine's call */}
         <Tile icon={CalendarClock} label="Irrigate-by (projected)">
@@ -99,6 +106,7 @@ export default function RecommendationPanel({ state }: { state: StateResponse })
           engine&apos;s authoritative call.
         </span>
       </div>
+      </>)}
     </section>
   );
 }

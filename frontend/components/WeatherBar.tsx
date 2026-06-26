@@ -8,6 +8,7 @@ import { Sun, CloudSun, Cloud, CloudDrizzle, CloudRain, Droplets, Wind, Thermome
 import type { StateResponse, SeriesPoint } from "@/lib/types";
 import { useUnits, fmtDepth, toDisplay } from "@/lib/units";
 import { fmtDate } from "@/lib/format";
+import CardChevron from "@/components/CardChevron";
 
 type Cond = { key: string; Icon: typeof Sun; label: string };
 function condition(precip: number | null, rs?: number | null): Cond {
@@ -21,6 +22,7 @@ function condition(precip: number | null, rs?: number | null): Cond {
 export default function WeatherBar({ state }: { state: StateResponse }) {
   const { unit } = useUnits();
   const [mounted, setMounted] = useState(false);
+  const [open, setOpen] = useState(true);
   useEffect(() => setMounted(true), []);
 
   const series = state.series;
@@ -50,6 +52,7 @@ export default function WeatherBar({ state }: { state: StateResponse }) {
     <section className="rounded-xl2 border border-hairline bg-card shadow-card">
       <div className="flex flex-col gap-3 p-5 pb-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
+          <CardChevron open={open} onClick={() => setOpen((o) => !o)} label="weather" />
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-water/[0.1] text-water">
             <todayCond.Icon className="h-6 w-6" />
           </span>
@@ -72,6 +75,7 @@ export default function WeatherBar({ state }: { state: StateResponse }) {
         </div>
       </div>
 
+      {open && (<>
       {/* temp curve + precip bars */}
       <div className="px-3 pt-2">
         {mounted ? (
@@ -131,6 +135,7 @@ export default function WeatherBar({ state }: { state: StateResponse }) {
           </span>
         </div>
       )}
+      </>)}
     </section>
   );
 }
