@@ -6,6 +6,7 @@ for this scale. Swap for SQLite later without changing callers.
 from __future__ import annotations
 
 import json
+import shutil
 import threading
 import uuid
 from datetime import datetime, timezone
@@ -91,6 +92,23 @@ def set_active(field_id: str) -> Optional[Field]:
 
 def list_fields() -> list[Field]:
     return [Field(**f) for f in _load_raw()["fields"].values()]
+
+
+def delete_field(field_id: str) -> bool:
+    """Remove a field from the store, clear the active pointer if it pointed here,
+    and delete that field's cached index/image/et/summary entries. Returns True if
+    the field existed."""
+    with _lock:
+        data = _load_raw()
+        existed = field_id in data["fields"]
+        data["fields"].pop(field_id, None)
+        if data.get("active_id") == field_id:
+            data["active_id"] = None
+        _save_raw(data)
+    cache_dir = CACHE_DIR / field_id
+    if cache_dir.exists():
+        shutil.rmtree(cache_dir, ignore_errors=True)
+    return existed
 
 
 def cache_path(field_id: str, *parts: str) -> Path:

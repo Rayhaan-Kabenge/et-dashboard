@@ -54,6 +54,23 @@ def activate_field(field_id: str):
     return field
 
 
+@router.delete("")
+def clear_active_field():
+    """Clear whatever field is currently active (store + its cache)."""
+    active = field_store.get_active()
+    if active is not None:
+        field_store.delete_field(active.id)
+    return {"cleared": True}
+
+
+@router.delete("/{field_id}")
+def clear_field(field_id: str):
+    """Remove a field from the store, clear the active pointer if it pointed here,
+    and delete its cached index/image/et/summary entries."""
+    field_store.delete_field(field_id)
+    return {"cleared": True}
+
+
 @router.get("/{field_id}/indices", response_model=IndexSeries)
 def get_indices(
     field_id: str,

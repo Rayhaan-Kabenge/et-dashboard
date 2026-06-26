@@ -85,7 +85,7 @@ export default function FieldHealthPage() {
 }
 
 function Body() {
-  const { field, loading, error } = useField();
+  const { field, loading, error, cleared } = useField();
   const engine = useEngineState();
   const stages = (engine?.stages ?? []).map((x) => ({ label: x.label, date: x.date }));
   const etcDaily = (engine?.series ?? []).map((p) => ({ date: p.date, etc: p.etc }));
@@ -135,9 +135,13 @@ function Body() {
           <ReferenceETCheck etrDaily={etrDaily} range={imageRange} et={et} etLoading={etLoading} />
           <FieldSummary range={imageRange} index="NDRE" engineContext={engineContext} />
         </>
+      ) : cleared ? (
+        <div className="rounded-xl2 border border-status-hold/25 bg-status-hold/[0.06] p-6 text-center text-sm font-medium text-status-hold">
+          Field cleared — draw or upload a new one to start over.
+        </div>
       ) : (
         <div className="rounded-xl2 border border-dashed border-hairline bg-card p-6 text-center text-sm text-muted">
-          No field yet — draw one on the map (draw tool, top-left) or upload a GeoJSON polygon.
+          No field selected — draw one on the map (draw tool, top-left) or upload a GeoJSON polygon.
         </div>
       )}
     </>

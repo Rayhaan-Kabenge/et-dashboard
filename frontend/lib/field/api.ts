@@ -21,6 +21,10 @@ export async function getActiveField(): Promise<Field | null> {
   return asJson<Field | null>(await fetch(BASE, { cache: "no-store" }));
 }
 
+export async function deleteField(fieldId: string): Promise<{ cleared: boolean }> {
+  return asJson<{ cleared: boolean }>(await fetch(`${BASE}/${fieldId}`, { method: "DELETE" }));
+}
+
 export async function createField(name: string, geometry: GeoPolygon, crop?: string | null): Promise<Field> {
   const res = await fetch(BASE, {
     method: "POST",
