@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   ComposedChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
 import { Droplets, TriangleAlert, CheckCircle2, CloudOff } from "lucide-react";
-import { useField } from "@/lib/field/context";
-import { getEt } from "@/lib/field/api";
 import type { ETResponse } from "@/lib/field/types";
 import CollapsibleCard from "./CollapsibleCard";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,24 +17,18 @@ function cumulate(points: { date: string; mm: number }[]) {
   return points.map((p) => ({ date: p.date, cum: (acc += p.mm) }));
 }
 
-export default function ETOverlay({ etcDaily, range }: { etcDaily: EtcDaily[]; range: Range }) {
-  const { field } = useField();
-  const [et, setEt] = useState<ETResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!field || range === undefined) return;
-    let cancelled = false;
-    setLoading(true);
-    getEt(field.id, range)
-      .then((d) => !cancelled && setEt(d))
-      .catch(() => !cancelled && setEt(null))
-      .finally(() => !cancelled && setLoading(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [field, range?.start, range?.end, range]);
-
+export default function ETOverlay({
+  etcDaily,
+  range,
+  et,
+  etLoading,
+}: {
+  etcDaily: EtcDaily[];
+  range: Range;
+  et: ETResponse | null;
+  etLoading: boolean;
+}) {
+  const loading = etLoading;
   const { data, modeledEnd, actualEnd, provFrom, note, coverage } = useMemo(() => {
     if (range === undefined) return { data: [] as any[], modeledEnd: 0, actualEnd: 0, provFrom: null as string | null, note: null as string | null, coverage: "ok" };
     const inRange = (d: string) => d >= range.start && d <= range.end;

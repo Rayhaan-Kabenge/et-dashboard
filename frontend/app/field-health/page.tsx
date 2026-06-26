@@ -7,11 +7,14 @@ import { Satellite } from "lucide-react";
 import { FIELD_HEALTH_ENABLED } from "@/lib/features";
 import { FieldProvider, useField } from "@/lib/field/context";
 import { fetchState } from "@/lib/api";
+import { getEt } from "@/lib/field/api";
 import type { StateResponse } from "@/lib/types";
+import type { ETResponse } from "@/lib/field/types";
 import FieldMeta from "@/components/field/FieldMeta";
 import IndexTimeline from "@/components/field/IndexTimeline";
 import LatestImage from "@/components/field/LatestImage";
 import ETOverlay from "@/components/field/ETOverlay";
+import ReferenceETCheck from "@/components/field/ReferenceETCheck";
 import FieldSummary from "@/components/field/FieldSummary";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -24,6 +27,25 @@ function useEngineState(): StateResponse | null {
     fetchState().then(setState).catch(() => setState(null));
   }, []);
   return state;
+}
+
+// Shared OpenET fetch for the selected range — both ET panels read it (one call).
+function useEt(fieldId: string | undefined, range: { start: string; end: string } | undefined) {
+  const [et, setEt] = useState<ETResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    if (!fieldId || range === undefined) return;
+    let cancelled = false;
+    setLoading(true);
+    getEt(fieldId, range)
+      .then((d) => !cancelled && setEt(d))
+      .catch(() => !cancelled && setEt(null))
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [fieldId, range?.start, range?.end]);
+  return { et, loading };
 }
 
 // Leaflet needs the browser — load the map client-side only.
@@ -67,9 +89,11 @@ function Body() {
   const engine = useEngineState();
   const stages = (engine?.stages ?? []).map((x) => ({ label: x.label, date: x.date }));
   const etcDaily = (engine?.series ?? []).map((p) => ({ date: p.date, etc: p.etc }));
+  const etrDaily = (engine?.series ?? []).map((p) => ({ date: p.date, etr: p.etr }));
   // the timeline owns the date-range selector; image + ET panels follow it.
   // undefined until the timeline reports; then { start, end }.
   const [imageRange, setImageRange] = useState<{ start: string; end: string } | undefined>(undefined);
+  const { et, loading: etLoading } = useEt(field?.id, imageRange);
   return (
     <>
       {error && (
@@ -87,7 +111,8 @@ function Body() {
           <FieldMeta />
           <IndexTimeline stages={stages} onRangeChange={setImageRange} />
           <LatestImage range={imageRange} />
-          <ETOverlay etcDaily={etcDaily} range={imageRange} />
+          <ETOverlay etcDaily={etcDaily} range={imageRange} et={et} etLoading={etLoading} />
+          <ReferenceETCheck etrDaily={etrDaily} range={imageRange} et={et} etLoading={etLoading} />
           <FieldSummary />
         </>
       ) : (
