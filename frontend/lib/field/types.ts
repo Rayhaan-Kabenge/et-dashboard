@@ -34,6 +34,19 @@ export interface IndexSeries {
   note?: string | null;
 }
 
+export interface ETPoint {
+  date: string;
+  mm: number;
+}
+
+export interface ETResponse {
+  et_actual: ETPoint[];
+  etr_gridmet: ETPoint[];
+  provisional_from: string | null;
+  coverage: "ok" | "out_of_area";
+  note?: string | null;
+}
+
 export interface FieldImage {
   field_id: string;
   index: string;

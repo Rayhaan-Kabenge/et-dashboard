@@ -7,23 +7,23 @@ import { Satellite } from "lucide-react";
 import { FIELD_HEALTH_ENABLED } from "@/lib/features";
 import { FieldProvider, useField } from "@/lib/field/context";
 import { fetchState } from "@/lib/api";
+import type { StateResponse } from "@/lib/types";
 import FieldMeta from "@/components/field/FieldMeta";
 import IndexTimeline from "@/components/field/IndexTimeline";
 import LatestImage from "@/components/field/LatestImage";
+import ETOverlay from "@/components/field/ETOverlay";
 import FieldSummary from "@/components/field/FieldSummary";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Stage markers come from the irrigation /api/state (frontend reuse only — the
-// Field Health backend never calls the engine).
-type StageMarker = { label: string; date: string };
-function useStageMarkers(): StageMarker[] {
-  const [stages, setStages] = useState<StageMarker[]>([]);
+// The irrigation /api/state is fetched here on the FRONTEND and passed into the
+// field panels as props (stage markers, daily modeled ETc, daily station ETr,
+// decision context). The Field Health backend never calls the engine.
+function useEngineState(): StateResponse | null {
+  const [state, setState] = useState<StateResponse | null>(null);
   useEffect(() => {
-    fetchState()
-      .then((s) => setStages((s.stages ?? []).map((x) => ({ label: x.label, date: x.date }))))
-      .catch(() => setStages([]));
+    fetchState().then(setState).catch(() => setState(null));
   }, []);
-  return stages;
+  return state;
 }
 
 // Leaflet needs the browser — load the map client-side only.
@@ -64,8 +64,10 @@ export default function FieldHealthPage() {
 
 function Body() {
   const { field, loading, error } = useField();
-  const stages = useStageMarkers();
-  // the timeline owns the date-range selector; the image panel follows it.
+  const engine = useEngineState();
+  const stages = (engine?.stages ?? []).map((x) => ({ label: x.label, date: x.date }));
+  const etcDaily = (engine?.series ?? []).map((p) => ({ date: p.date, etc: p.etc }));
+  // the timeline owns the date-range selector; image + ET panels follow it.
   // undefined until the timeline reports; then { start, end }.
   const [imageRange, setImageRange] = useState<{ start: string; end: string } | undefined>(undefined);
   return (
@@ -85,6 +87,7 @@ function Body() {
           <FieldMeta />
           <IndexTimeline stages={stages} onRangeChange={setImageRange} />
           <LatestImage range={imageRange} />
+          <ETOverlay etcDaily={etcDaily} range={imageRange} />
           <FieldSummary />
         </>
       ) : (

@@ -12,6 +12,7 @@ a FLAT [lon,lat,...] `geometry`, `interval`, `model`, `variable`, `reference_et`
 from __future__ import annotations
 
 import json
+import time
 from datetime import date, timedelta
 from typing import Optional
 
@@ -25,6 +26,9 @@ BASE_URL = "https://openet-api.org"
 POLYGON_URL = f"{BASE_URL}/raster/timeseries/polygon"
 PROVISIONAL_LATENCY_DAYS = 5     # recent days are provisional
 MAX_VERTICES = 300               # simplify overly detailed rings
+MAX_WINDOW_DAYS = 540            # cap the request window (OpenET is slow on huge ranges)
+REQUEST_TIMEOUT = 30.0           # per-call cap so a slow OpenET can't hang the page
+NEG_CACHE_SECONDS = 600          # after a failure, skip OpenET for ~10 min
 
 # OpenET coverage = the western 23 US states. A bbox gate avoids a wasted call when
 # the field is clearly outside (e.g. eastern US). Colby/North Platte are well inside.
@@ -82,7 +86,7 @@ def _parse_series(payload, value_hint: str) -> list[dict]:
 
 
 class OpenETClient:
-    def __init__(self, api_key: Optional[str], timeout: float = 120.0):
+    def __init__(self, api_key: Optional[str], timeout: float = REQUEST_TIMEOUT):
         self._key = api_key
         self._timeout = timeout
 
@@ -174,24 +178,58 @@ def _series_cached(client: OpenETClient, field: Field, variable: str, start: str
     return pts, note
 
 
+def _status_file(field_id: str):
+    return field_store.cache_path(field_id, "openet_status.json")
+
+
+def _recent_failure(field_id: str) -> Optional[str]:
+    p = _status_file(field_id)
+    if p.exists():
+        try:
+            s = json.loads(p.read_text(encoding="utf-8"))
+            if time.time() - s.get("ts", 0) < NEG_CACHE_SECONDS:
+                return s.get("note") or "OpenET unavailable."
+        except (json.JSONDecodeError, OSError):
+            pass
+    return None
+
+
+def _record_failure(field_id: str, note: str) -> None:
+    try:
+        _status_file(field_id).write_text(json.dumps({"ts": time.time(), "note": note}), encoding="utf-8")
+    except OSError:
+        pass
+
+
 def get_et(field: Field, start: str, end: str) -> dict:
     """Actual ET + gridMET reference ET for the field/range.
 
     Returns {et_actual, etr_gridmet, provisional_from, coverage, note}. Never raises.
     """
+    provisional_from = (date.today() - timedelta(days=PROVISIONAL_LATENCY_DAYS)).isoformat()
+    empty = {"et_actual": [], "etr_gridmet": [], "provisional_from": provisional_from}
+
     if not in_coverage(field.centroid):
-        return {"et_actual": [], "etr_gridmet": [], "provisional_from": None,
-                "coverage": "out_of_area",
+        return {**empty, "coverage": "out_of_area",
                 "note": "Field is outside OpenET coverage (western 23 US states)."}
 
     client = OpenETClient(get_settings().openet_api_key)
     if not client.configured:
-        return {"et_actual": [], "etr_gridmet": [], "provisional_from": None,
-                "coverage": "ok", "note": "Add OPENET_API_KEY to enable the OpenET ET overlay."}
+        return {**empty, "coverage": "ok", "note": "Add OPENET_API_KEY to enable the OpenET ET overlay."}
+
+    # negative cache: don't re-hit a known-down service on every page load
+    recent = _recent_failure(field.id)
+    if recent:
+        return {**empty, "coverage": "ok", "note": recent}
+
+    # cap the request window — OpenET is very slow on multi-year ranges
+    if date.fromisoformat(end) - date.fromisoformat(start) > timedelta(days=MAX_WINDOW_DAYS):
+        start = (date.fromisoformat(end) - timedelta(days=MAX_WINDOW_DAYS)).isoformat()
 
     et_actual, note_a = _series_cached(client, field, "ET", start, end)
     etr, note_b = _series_cached(client, field, "ETr", start, end)
     note = note_a or note_b
-    provisional_from = (date.today() - timedelta(days=PROVISIONAL_LATENCY_DAYS)).isoformat()
+    if note and not et_actual and not etr:
+        _record_failure(field.id, note)
     return {"et_actual": et_actual, "etr_gridmet": etr, "provisional_from": provisional_from,
             "coverage": "ok", "note": note}

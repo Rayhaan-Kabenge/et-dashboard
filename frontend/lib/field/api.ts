@@ -1,5 +1,5 @@
 import { API_BASE } from "@/lib/api";
-import type { Field, GeoPolygon, IndexSeries, FieldImage } from "./types";
+import type { Field, GeoPolygon, IndexSeries, FieldImage, ETResponse } from "./types";
 
 const BASE = `${API_BASE}/api/field`;
 
@@ -55,6 +55,17 @@ export async function getImage(
   return asJson<FieldImage>(await fetch(`${BASE}/${fieldId}/image?${q}`, { cache: "no-store" }));
 }
 
-export async function postSummary(fieldId: string): Promise<{ status: string; message: string }> {
-  return asJson(await fetch(`${BASE}/${fieldId}/summary`, { method: "POST" }));
+export async function getEt(fieldId: string, range: { start: string; end: string }): Promise<ETResponse> {
+  const q = new URLSearchParams({ start: range.start, end: range.end });
+  return asJson<ETResponse>(await fetch(`${BASE}/${fieldId}/et?${q}`, { cache: "no-store" }));
+}
+
+export async function postSummary(fieldId: string, body?: unknown): Promise<any> {
+  return asJson(
+    await fetch(`${BASE}/${fieldId}/summary`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body ?? {}),
+    })
+  );
 }
