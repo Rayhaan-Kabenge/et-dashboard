@@ -315,7 +315,7 @@ class CsvSheetSource:
         site = SiteMeta(
             name=site_cfg.get("site_name") or "Field",
             season=site_cfg.get("season_year") or (planting.year if planting else date.today().year),
-            latitude=site_cfg["latitude"], longitude=self._lon, elevation=site_cfg["elevation"],
+            latitude=site_cfg["latitude"], longitude=site_cfg.get("longitude", self._lon), elevation=site_cfg["elevation"],
             planting_date=planting, reference_crop="Tall" if site_cfg["tall"] else "Short",
             humidity_input=site_cfg.get("humidity_input") or "RHmax_RHmin",
             units_default="mm", sheet_edit_url=self._edit_url, demo_mode=self._demo,
@@ -360,10 +360,16 @@ class CsvSheetSource:
         out["site_name"] = site_name or get("Site name") or None
         season = _to_float(get("Season (year)", "Season"))
         out["season_year"] = int(season) if season else None
+        # The sheet's Site_Config is the single source of truth for location.
+        # .env LAT/LON (lat_override / self._lon) are only fallbacks for when the
+        # sheet omits a coordinate — they never override a value the sheet provides.
+        # This keeps the engine and the Open-Meteo forecast pinned to the same site.
         lat = _to_float(get("Latitude"))
-        if lat is None:
+        out["latitude"] = lat if lat is not None else self._lat_override
+        if out["latitude"] is None:
             errors.append(LoadError(TAB_SITE, "Latitude", "missing or non-numeric"))
-        out["latitude"] = self._lat_override if self._lat_override is not None else lat
+        sheet_lon = _to_float(get("Longitude"))
+        out["longitude"] = sheet_lon if sheet_lon is not None else self._lon
         out["elevation"] = _to_float(get("Elevation"))
         if out["elevation"] is None:
             errors.append(LoadError(TAB_SITE, "Elevation", "missing or non-numeric"))
