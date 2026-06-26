@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { StateResponse } from "@/lib/types";
 import { fetchState } from "@/lib/api";
 import TopBar from "@/components/TopBar";
-import AlertsBar from "@/components/AlertsBar";
+import StatusNotices from "@/components/StatusNotices";
 import HeroBanner from "@/components/HeroBanner";
 import RootZoneMeter from "@/components/RootZoneMeter";
 import RecommendationPanel from "@/components/RecommendationPanel";
@@ -75,8 +75,6 @@ export default function Page() {
             Forecast only — no actual weather logged yet this season, so values shown are projections.
           </div>
         )}
-        <AlertsBar alerts={state.alerts} />
-
         <HeroBanner state={state} />
 
         <RootZoneMeter state={state} />
@@ -109,6 +107,9 @@ export default function Page() {
 
         <Footer state={state} />
       </main>
+
+      {/* floating, persistent status notices (overlay; reclaims the top) */}
+      <StatusNotices alerts={state.alerts} />
     </div>
   );
 }
