@@ -88,3 +88,33 @@ export async function postSummary(fieldId: string, body?: unknown, force = false
     })
   );
 }
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface ChatResponse {
+  status: string; // "ok" | "unconfigured" | "error"
+  reply?: string | null;
+  model?: string | null;
+  generated_at?: string | null;
+  message?: string | null;
+}
+
+export interface ChatRequestBody {
+  messages: ChatMessage[];
+  range: { start: string; end: string } | Record<string, never>;
+  index: string;
+  engine_context: Record<string, unknown>;
+}
+
+export async function postChat(fieldId: string, body: ChatRequestBody): Promise<ChatResponse> {
+  return asJson<ChatResponse>(
+    await fetch(`${BASE}/${fieldId}/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+  );
+}

@@ -13,11 +13,11 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 
 from ..config import get_settings
-from . import field_store, geocode, indices, openet, summary as summary_svc
+from . import chat as chat_svc, field_store, geocode, indices, openet, summary as summary_svc
 from .geometry import validate_polygon
 from .schemas import (
-    ETPoint, ETResponse, Field, FieldCreate, FieldImage, GeocodeResponse, IndexPoint,
-    IndexSeries, SummaryRequest, SummaryResponse)
+    ChatRequest, ChatResponse, ETPoint, ETResponse, Field, FieldCreate, FieldImage,
+    GeocodeResponse, IndexPoint, IndexSeries, SummaryRequest, SummaryResponse)
 from .sentinel import SentinelClient, SentinelError
 
 router = APIRouter(prefix="/api/field", tags=["field-health"])
@@ -169,6 +169,15 @@ def field_summary(field_id: str, body: SummaryRequest = SummaryRequest(), force:
     field's cached index/ET. Cached by input fingerprint; ?force=1 regenerates.
     No key / failure -> graceful note (never a 500)."""
     return summary_svc.build_summary(_require_field(field_id), body, force=force)
+
+
+@router.post("/{field_id}/chat", response_model=ChatResponse)
+def field_chat(field_id: str, body: ChatRequest):
+    """Interactive Q&A about this field, grounded on the SAME numeric block as the
+    summary (grounding.numeric_block) — index trend, OpenET ET gap, and the engine
+    context from the frontend. Advisory-only; never overrides the engine decision.
+    No key / failure -> graceful note (never a 500)."""
+    return chat_svc.build_chat(_require_field(field_id), body)
 
 
 @router.get("/{field_id}/et", response_model=ETResponse)

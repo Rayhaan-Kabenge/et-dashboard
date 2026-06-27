@@ -99,3 +99,23 @@ class SummaryResponse(BaseModel):
     model: Optional[str] = None
     inputs_fingerprint: Optional[str] = None
     message: Optional[str] = None
+
+
+class ChatMessage(BaseModel):
+    role: str                            # "user" | "assistant"
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage] = []
+    range: dict[str, str] = {}           # {start, end}
+    index: str = "NDRE"
+    engine_context: EngineContext = EngineContext()
+
+
+class ChatResponse(BaseModel):
+    status: str                          # "ok" | "unconfigured" | "error"
+    reply: Optional[str] = None
+    generated_at: Optional[str] = None
+    model: Optional[str] = None
+    message: Optional[str] = None

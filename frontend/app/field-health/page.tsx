@@ -17,6 +17,7 @@ import LatestImage from "@/components/field/LatestImage";
 import ETOverlay from "@/components/field/ETOverlay";
 import ReferenceETCheck from "@/components/field/ReferenceETCheck";
 import FieldSummary from "@/components/field/FieldSummary";
+import FieldChat from "@/components/field/FieldChat";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // The irrigation /api/state is fetched here on the FRONTEND and passed into the
@@ -154,6 +155,9 @@ function Body() {
           No field selected — draw one on the map (draw tool, top-left) or upload a GeoJSON polygon.
         </div>
       )}
+
+      {/* floating "Ask about this field" launcher — Field Health only */}
+      <FieldChat range={imageRange} index="NDRE" engineContext={engineContext} />
     </>
   );
 }
