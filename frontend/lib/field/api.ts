@@ -118,3 +118,40 @@ export async function postChat(fieldId: string, body: ChatRequestBody): Promise<
     })
   );
 }
+
+export interface SufficiencyResponse {
+  status: "ok" | "unavailable";
+  field_id?: string | null;
+  index: string;
+  scene_date?: string | null;
+  reference_ndre?: number | null;
+  reference_method?: string | null;
+  canopy_median_ndre?: number | null;
+  valid_fraction?: number | null;
+  threshold?: number | null;
+  pct_below_threshold?: number | null;
+  histogram?: number[] | null; // 0.01-wide SI bins over [0, 1.01)
+  png_base64?: string | null;
+  bbox?: number[] | null;
+  caveat?: string | null;
+  note?: string | null;
+}
+
+export async function getSufficiency(
+  fieldId: string,
+  range: { start: string; end: string },
+  threshold: number
+): Promise<SufficiencyResponse> {
+  const q = new URLSearchParams({ start: range.start, end: range.end, threshold: String(threshold) });
+  return asJson<SufficiencyResponse>(await fetch(`${BASE}/${fieldId}/sufficiency?${q}`, { cache: "no-store" }));
+}
+
+export function sufficiencyExportUrl(
+  fieldId: string,
+  range: { start: string; end: string },
+  threshold: number,
+  format: "geojson" | "shp"
+): string {
+  const q = new URLSearchParams({ start: range.start, end: range.end, threshold: String(threshold), format });
+  return `${BASE}/${fieldId}/sufficiency/export?${q}`;
+}

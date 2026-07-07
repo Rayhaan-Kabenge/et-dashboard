@@ -10,14 +10,15 @@ import time
 from datetime import date, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 
 from ..config import get_settings
-from . import chat as chat_svc, field_store, geocode, indices, openet, summary as summary_svc
+from . import chat as chat_svc, field_store, geocode, indices, openet, sufficiency, summary as summary_svc
 from .geometry import validate_polygon
 from .schemas import (
     ChatRequest, ChatResponse, ETPoint, ETResponse, Field, FieldCreate, FieldImage,
-    GeocodeResponse, IndexPoint, IndexSeries, SummaryRequest, SummaryResponse)
+    GeocodeResponse, IndexPoint, IndexSeries, SufficiencyResponse, SummaryRequest,
+    SummaryResponse)
 from .sentinel import SentinelClient, SentinelError
 
 router = APIRouter(prefix="/api/field", tags=["field-health"])
@@ -178,6 +179,56 @@ def field_chat(field_id: str, body: ChatRequest):
     context from the frontend. Advisory-only; never overrides the engine decision.
     No key / failure -> graceful note (never a 500)."""
     return chat_svc.build_chat(_require_field(field_id), body)
+
+
+def _si_range(start: Optional[str], end: Optional[str]) -> tuple[str, str]:
+    today = date.today()
+    return (start or (today - timedelta(days=120)).isoformat(), end or today.isoformat())
+
+
+@router.get("/{field_id}/sufficiency", response_model=SufficiencyResponse)
+def field_sufficiency(field_id: str, start: Optional[str] = None, end: Optional[str] = None,
+                      threshold: float = sufficiency.DEFAULT_THRESHOLD):
+    """Relative Sufficiency Index heat map for the latest cloud-free scene in range
+    (same scene the Latest-image panel shows). Reference = 95th-percentile in-field
+    NDRE; SI = NDRE/reference capped at 1. Gated (stale scene / sparse canopy /
+    too few valid pixels) -> status "unavailable" with a note, never a 500.
+    NOT a nitrogen prescription — within-field variability only."""
+    field = _require_field(field_id)
+    s, e = _si_range(start, end)
+    try:
+        return sufficiency.compute(field, s, e, threshold=threshold)
+    except sufficiency.SufficiencyUnavailable as exc:
+        return SufficiencyResponse(status="unavailable", field_id=field_id, note=exc.reason,
+                                   caveat=sufficiency.CAVEAT)
+    except SentinelError as exc:
+        return SufficiencyResponse(status="unavailable", field_id=field_id, note=str(exc),
+                                   caveat=sufficiency.CAVEAT)
+
+
+@router.get("/{field_id}/sufficiency/export")
+def field_sufficiency_export(field_id: str, format: str = "geojson",
+                             start: Optional[str] = None, end: Optional[str] = None,
+                             threshold: float = sufficiency.DEFAULT_THRESHOLD):
+    """Download the SI surface classified into 5 management zones (polygons with
+    SI_value / SI_class / ndre_mean / below_threshold). format=geojson -> single
+    WGS84 GeoJSON with metadata+caveat; format=shp -> zipped Shapefile bundle
+    (.shp/.shx/.dbf/.prj) with a caveat README.txt."""
+    field = _require_field(field_id)
+    s, e = _si_range(start, end)
+    try:
+        if format.lower() in ("shp", "shapefile", "zip"):
+            data, fname = sufficiency.export_shapefile_zip(field, s, e, threshold)
+            media = "application/zip"
+        else:
+            data, fname = sufficiency.export_geojson(field, s, e, threshold)
+            media = "application/geo+json"
+    except sufficiency.SufficiencyUnavailable as exc:
+        raise HTTPException(status_code=409, detail=exc.reason)
+    except SentinelError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    return Response(content=data, media_type=media,
+                    headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 
 
 @router.get("/{field_id}/et", response_model=ETResponse)

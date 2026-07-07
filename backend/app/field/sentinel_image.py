@@ -51,6 +51,48 @@ function evaluatePixel(s) {{
 }}"""
 
 
+def _raw_evalscript(index: str) -> str:
+    """Raw index values as FLOAT32; invalid pixels (clouds/shadow/no-data and
+    anything outside the polygon, via dataMask) carry the sentinel -999."""
+    red = "B04" if index.upper() == "NDVI" else "B05"
+    return f"""//VERSION=3
+function setup() {{
+  return {{ input: ["{red}","B08","SCL","dataMask"], output: {{ bands: 1, sampleType: "FLOAT32" }} }};
+}}
+function evaluatePixel(s) {{
+  let valid = s.dataMask;
+  if ({_INVALID_SCL}.includes(s.SCL)) valid = 0;
+  if (valid === 0) return [-999];
+  let idx = (s.B08 - s.{red}) / (s.B08 + s.{red} + 1e-6);
+  return [idx];
+}}"""
+
+
+def build_raw_request(geometry: dict, index: str, date_str: str, width: int, height: int) -> dict:
+    """Process-API body for the raw FLOAT32 TIFF of ONE scene date."""
+    start = date_str
+    end = (date.fromisoformat(date_str) + timedelta(days=1)).isoformat()
+    return {
+        "input": {
+            "bounds": {"geometry": geometry, "properties": {"crs": "http://www.opengis.net/def/crs/EPSG/0/4326"}},
+            "data": [{
+                "type": "sentinel-2-l2a",
+                "dataFilter": {
+                    "timeRange": {"from": f"{start}T00:00:00Z", "to": f"{end}T23:59:59Z"},
+                    "mosaickingOrder": "leastCC",
+                    "maxCloudCoverage": 80,
+                },
+            }],
+        },
+        "output": {
+            "width": width,
+            "height": height,
+            "responses": [{"identifier": "default", "format": {"type": "image/tiff"}}],
+        },
+        "evalscript": _raw_evalscript(index),
+    }
+
+
 def build_process_request(geometry: dict, bbox: list[float], index: str, date_str: Optional[str], size: int = 512) -> dict:
     w, h = _dims(bbox, cap=size)
     if date_str and date_str != "latest":

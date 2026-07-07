@@ -119,3 +119,23 @@ class ChatResponse(BaseModel):
     generated_at: Optional[str] = None
     model: Optional[str] = None
     message: Optional[str] = None
+
+
+class SufficiencyResponse(BaseModel):
+    """Relative Sufficiency Index read (NDRE / 95th-percentile reference).
+    status "unavailable" carries only a note (gated: stale scene / low canopy)."""
+    status: str                          # "ok" | "unavailable"
+    field_id: Optional[str] = None
+    index: str = "NDRE"
+    scene_date: Optional[str] = None
+    reference_ndre: Optional[float] = None
+    reference_method: Optional[str] = None
+    canopy_median_ndre: Optional[float] = None
+    valid_fraction: Optional[float] = None
+    threshold: Optional[float] = None
+    pct_below_threshold: Optional[float] = None
+    histogram: Optional[list[int]] = None   # 0.01-wide SI bins over [0, 1.01)
+    png_base64: Optional[str] = None
+    bbox: Optional[list[float]] = None
+    caveat: Optional[str] = None
+    note: Optional[str] = None

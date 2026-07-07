@@ -132,6 +132,28 @@ class SentinelClient:
             raise SentinelError(f"process request failed (HTTP {r.status_code}): {r.text[:200]}")
         return r.content
 
+    # -- process API (raw per-pixel index values; sufficiency map) ----------
+    def index_raw_tiff(self, geometry: dict, bbox: list[float], index: str, date: str,
+                       width: int, height: int) -> bytes:
+        """Raw FLOAT32 single-band GeoTIFF of the index for ONE scene date, clipped
+        to the polygon. Invalid pixels (cloud/shadow/no-data/outside boundary) carry
+        the sentinel value -999 so the caller can mask them without a second band."""
+        from .sentinel_image import build_raw_request  # local import keeps this file focused
+
+        token = self._bearer()
+        body = build_raw_request(geometry, index, date, width, height)
+        try:
+            r = httpx.post(
+                PROCESS_URL, json=body,
+                headers={"Authorization": f"Bearer {token}", "Accept": "image/tiff"},
+                timeout=self._timeout,
+            )
+        except httpx.HTTPError as exc:
+            raise SentinelError(f"process request failed ({type(exc).__name__})")
+        if r.status_code != 200:
+            raise SentinelError(f"process request failed (HTTP {r.status_code}): {r.text[:200]}")
+        return r.content
+
 
 def _parse_statistics(payload: dict) -> list[dict]:
     """Map the SH Statistical API response to [{date, mean, stdev, valid_fraction}].

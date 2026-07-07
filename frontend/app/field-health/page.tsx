@@ -14,6 +14,7 @@ import type { ETResponse } from "@/lib/field/types";
 import FieldMeta from "@/components/field/FieldMeta";
 import IndexTimeline from "@/components/field/IndexTimeline";
 import LatestImage from "@/components/field/LatestImage";
+import SufficiencyMap from "@/components/field/SufficiencyMap";
 import ETOverlay from "@/components/field/ETOverlay";
 import ReferenceETCheck from "@/components/field/ReferenceETCheck";
 import FieldSummary from "@/components/field/FieldSummary";
@@ -142,6 +143,7 @@ function Body() {
           <FieldMeta />
           <IndexTimeline stages={stages} onRangeChange={setImageRange} />
           <LatestImage range={imageRange} />
+          <SufficiencyMap range={imageRange} />
           <ETOverlay etcDaily={etcDaily} range={imageRange} et={et} etLoading={etLoading} />
           <ReferenceETCheck etrDaily={etrDaily} range={imageRange} et={et} etLoading={etLoading} />
           <FieldSummary range={imageRange} index="NDRE" engineContext={engineContext} />

@@ -13,3 +13,10 @@ openpyxl>=3.1
 pyfao56>=1.3.0
 pytest>=8.0
 anthropic>=0.40
+
+# Field Health — sufficiency-index map + prescription-zone export
+numpy>=1.26
+pillow>=10.0
+tifffile>=2024.1
+shapely>=2.0
+pyshp>=2.3
