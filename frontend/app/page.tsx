@@ -89,9 +89,9 @@ export default function Page() {
               <div className="flex items-center gap-2">
                 <CardChevron open={depOpen} onClick={() => setDepOpen((o) => !o)} label="depletion forecast" />
                 <div>
-                  <h3 className="text-lg font-semibold text-ink">Depletion forecast</h3>
+                  <h3 className="text-lg font-semibold text-ink">Water remaining</h3>
                   <p className="text-sm text-ink/50">
-                    Root-zone depletion vs allowable depletion · forecast through {fmtDate(state.freshness.forecast_through)}
+                    Root-zone water left before the trigger — falls with crop use, rises with rain/irrigation · forecast through {fmtDate(state.freshness.forecast_through)}
                   </p>
                 </div>
               </div>
@@ -118,13 +118,16 @@ function Legend() {
   return (
     <div className="hidden items-center gap-3 font-mono text-xs text-muted sm:flex">
       <span className="inline-flex items-center gap-1.5">
-        <span className="h-2 w-4 rounded-full bg-brand" /> actual
+        <span className="h-2 w-4 rounded-full bg-brand" /> water remaining
       </span>
       <span className="inline-flex items-center gap-1.5">
         <span className="h-0 w-4 border-t-2 border-dashed border-water" /> forecast
       </span>
       <span className="inline-flex items-center gap-1.5">
-        <span className="h-0 w-4 border-t-2 border-dashed border-status-soon" /> AD
+        <span className="h-0 w-4 border-t-2 border-dashed border-status-soon" /> full (AD)
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="h-0 w-4 border-t-2 border-dashed border-status-now" /> trigger
       </span>
     </div>
   );
