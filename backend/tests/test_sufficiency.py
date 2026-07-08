@@ -77,6 +77,46 @@ def test_zones_classify_into_5_with_attributes():
     assert by_class[ks[0]] < by_class[ks[-1]]
 
 
+def test_fetch_grid_rejects_poisoned_cache_and_corrupt_decode(tmp_path, monkeypatch):
+    """A cached grid with out-of-range values is discarded + refetched; a corrupt
+    fresh decode is discarded (never cached) and surfaces as SentinelError."""
+    import io as _io
+    import tifffile
+    from app.field import sentinel as sentinel_mod
+
+    f = _field()
+    monkeypatch.setattr(sfy.field_store, "cache_path", lambda fid, name: tmp_path / name)
+
+    good = np.full((10, 10), 0.42, dtype=np.float32)
+    buf = _io.BytesIO()
+    tifffile.imwrite(buf, good)
+
+    class FakeClient:
+        def __init__(self, *a, **k): ...
+        def index_raw_tiff(self, *a, **k):
+            return buf.getvalue()
+
+    monkeypatch.setattr(sfy, "SentinelClient", FakeClient)
+
+    # poisoned cache (PIL-era garbage signature) → rejected, deleted, refetched clean
+    cache = tmp_path / "si_grid_2026-07-03.npz"
+    poison = np.array([[0.0, -855.39], [3.3e38, 0.1]], dtype=np.float32)
+    np.savez_compressed(cache, ndre=poison)
+    grid = sfy._fetch_grid(f, "2026-07-03")
+    assert float(np.nanmedian(grid)) == pytest.approx(0.42)
+    assert sfy._grid_ok(np.load(cache)["ndre"])       # cache rewritten with the clean grid
+
+    # corrupt fresh decode → SentinelError, nothing cached
+    bad = np.full((10, 10), 3.3e38, dtype=np.float32)
+    bad_buf = _io.BytesIO()
+    tifffile.imwrite(bad_buf, bad)
+    FakeClient.index_raw_tiff = lambda self, *a, **k: bad_buf.getvalue()
+    cache2 = tmp_path / "si_grid_2026-07-08.npz"
+    with pytest.raises(sentinel_mod.SentinelError):
+        sfy._fetch_grid(f, "2026-07-08")
+    assert not cache2.exists()
+
+
 def test_exports_geojson_and_shapefile_zip(monkeypatch):
     f = _field()
     g = _grid()

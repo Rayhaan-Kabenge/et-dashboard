@@ -17,12 +17,15 @@ from __future__ import annotations
 import base64
 import io
 import json
+import logging
 import zipfile
 from datetime import date as _date, datetime, timezone
 from typing import Optional
 
 import numpy as np
 from PIL import Image
+
+_log = logging.getLogger("app.field.sufficiency")
 
 from ..config import get_settings
 from . import field_store, indices
@@ -79,13 +82,31 @@ def _grid_dims(bbox: list[float], meters_per_px: float = 10.0, cap: int = 512) -
     return w, h
 
 
+GRID_VALUE_LIMIT = 1.05        # NDRE is bounded to [-1, 1]; anything beyond = corrupt decode
+
+
+def _grid_ok(grid: np.ndarray) -> bool:
+    """A sane NDRE grid keeps every finite value inside ±GRID_VALUE_LIMIT.
+    An all-masked grid is legitimate (fully cloudy) — the gate handles that."""
+    fin = grid[np.isfinite(grid)]
+    if fin.size == 0:
+        return True
+    return bool(np.abs(fin).max() <= GRID_VALUE_LIMIT)
+
+
 def _fetch_grid(field: Field, scene_date: str) -> np.ndarray:
     """Raw NDRE grid (float32, NaN = invalid/outside boundary) for one scene,
-    cached on disk per field + scene date."""
+    cached on disk per field + scene date. Grids are validated on cache-load AND
+    post-decode so a corrupt decode can never poison the cache (self-healing)."""
     cache = field_store.cache_path(field.id, f"si_grid_{scene_date}.npz")
     if cache.exists():
         try:
-            return np.load(cache)["ndre"]
+            grid = np.load(cache)["ndre"]
+            if _grid_ok(grid):
+                return grid
+            _log.warning("discarding poisoned SI grid cache %s (values outside ±%s) — refetching",
+                         cache.name, GRID_VALUE_LIMIT)
+            cache.unlink(missing_ok=True)
         except Exception:
             pass
     s = get_settings()
@@ -97,6 +118,10 @@ def _fetch_grid(field: Field, scene_date: str) -> np.ndarray:
     if arr.ndim == 3:                      # defensive: some encoders add a band axis
         arr = arr[..., 0]
     grid = np.where(arr <= SENTINEL_NODATA, np.nan, arr)
+    if not _grid_ok(grid):                 # discard, don't cache — surfaces as "unavailable"
+        _log.warning("raw NDRE decode for %s scene %s failed validation (values outside ±%s) — discarded",
+                     field.id, scene_date, GRID_VALUE_LIMIT)
+        raise SentinelError("raw NDRE decode failed validation — try again shortly.")
     try:
         np.savez_compressed(cache, ndre=grid)
     except OSError:
