@@ -143,7 +143,7 @@ function Body() {
           <FieldMeta />
           <IndexTimeline stages={stages} onRangeChange={setImageRange} />
           <LatestImage range={imageRange} />
-          <SufficiencyMap range={imageRange} />
+          <SufficiencyMap range={imageRange} engineContext={engineContext} />
           <ETOverlay etcDaily={etcDaily} range={imageRange} et={et} etLoading={etLoading} />
           <ReferenceETCheck etrDaily={etrDaily} range={imageRange} et={et} etLoading={etLoading} />
           <FieldSummary range={imageRange} index="NDRE" engineContext={engineContext} />

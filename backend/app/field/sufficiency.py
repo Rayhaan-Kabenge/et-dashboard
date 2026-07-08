@@ -256,6 +256,59 @@ def compute(field: Field, start: str, end: str, threshold: float = DEFAULT_THRES
 
 
 # --------------------------------------------------------------------------- #
+# spatial stats for the AI summary (numbers only — Claude narrates, never computes)
+# --------------------------------------------------------------------------- #
+def _low_si_location(si: np.ndarray, threshold: float) -> dict:
+    """Where the below-threshold (cropped) pixels sit relative to the field:
+    8-way compass direction of their centroid + concentrated/scattered pattern.
+    Grid row 0 is the field's north edge."""
+    below = np.isfinite(si) & (si < threshold)
+    n = int(below.sum())
+    if n == 0:
+        return {"pattern": "none below threshold"}
+    h, w = si.shape
+    rows, cols = np.nonzero(below)
+    dx = (cols.mean() + 0.5) / w - 0.5          # + = east of field center
+    dy = 0.5 - (rows.mean() + 0.5) / h          # + = north of field center
+    dist = float(np.hypot(dx, dy))
+    if dist < 0.10:
+        direction = "around the center of the field"
+    else:
+        names = ["east", "northeast", "north", "northwest", "west", "southwest", "south", "southeast"]
+        octant = int(np.round(np.arctan2(dy, dx) / (np.pi / 4))) % 8
+        direction = names[octant]
+    spread = float(np.hypot(cols.std() / w, rows.std() / h))
+    pattern = "concentrated" if spread < 0.18 else "scattered"
+    return {"direction": direction, "pattern": pattern, "n_pixels": n}
+
+
+def spatial_stats(field: Field, start: str, end: str, threshold: float) -> dict:
+    """Numeric SI block for the spatial summary — masked computation (cropped
+    pixels only; bare soil already excluded). Raises SufficiencyUnavailable /
+    SentinelError for the caller's graceful states."""
+    scene_date = _resolve_scene(field, start, end)
+    ndre = _fetch_grid(field, scene_date)
+    _gate(ndre, scene_date, ref_date=end)
+    si, reference, bare = _si_surface(ndre)
+    cropped = si[np.isfinite(si)]
+    n_valid = int(np.isfinite(ndre).sum())
+    cropped_fraction = float(cropped.size / n_valid) if n_valid else 0.0
+    return {
+        "available": True,
+        "scene_date": scene_date,
+        "reference_method": f"{REFERENCE_PCT}th percentile of cropped in-field NDRE (internal virtual reference)",
+        "reference_ndre": round(reference, 4),
+        "threshold": threshold,
+        "pct_of_cropped_area_below_threshold": round(float((cropped < threshold).mean() * 100.0), 1),
+        "cropped_fraction_of_field": round(cropped_fraction, 3),
+        "bare_or_unplanted_fraction_excluded": round(1.0 - cropped_fraction, 3),
+        "si_min": round(float(cropped.min()), 3),
+        "si_median": round(float(np.median(cropped)), 3),
+        "low_si_zone_location": _low_si_location(si, threshold),
+    }
+
+
+# --------------------------------------------------------------------------- #
 # 5-zone classification + vector export
 # --------------------------------------------------------------------------- #
 def _zone_features(field: Field, si: np.ndarray, ndre: np.ndarray, threshold: float) -> list[dict]:

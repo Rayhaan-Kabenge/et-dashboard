@@ -69,6 +69,30 @@ def test_bare_soil_pixels_excluded_from_reference_map_and_zones():
         assert ft["properties"]["ndre_mean"] >= sfy.BARE_SOIL_NDRE
 
 
+def test_low_si_location_directions_and_pattern():
+    """Below-threshold cluster placement → compass direction + pattern.
+    Grid row 0 = north; col 0 = west."""
+    si = np.full((20, 20), 0.98, dtype=np.float32)
+    si[14:20, 0:6] = 0.80                       # tight block: south rows, west cols
+    loc = sfy._low_si_location(si, threshold=0.95)
+    assert loc["direction"] == "southwest" and loc["pattern"] == "concentrated"
+    assert loc["n_pixels"] == 36
+
+    si2 = np.full((20, 20), 0.98, dtype=np.float32)
+    si2[0:4, :] = 0.80                          # northern edge band
+    loc2 = sfy._low_si_location(si2, threshold=0.95)
+    assert loc2["direction"] == "north"
+
+    rng = np.random.default_rng(42)             # scattered everywhere
+    si3 = np.full((20, 20), 0.98, dtype=np.float32)
+    pick = rng.random((20, 20)) < 0.25
+    si3[pick] = 0.85
+    loc3 = sfy._low_si_location(si3, threshold=0.95)
+    assert loc3["pattern"] == "scattered"
+
+    assert sfy._low_si_location(np.full((5, 5), 0.99, dtype=np.float32), 0.95)["pattern"] == "none below threshold"
+
+
 def test_gating_blocks_sparse_canopy_and_stale_scene():
     today = date.today().isoformat()
     bare = np.full((10, 10), 0.10, dtype=np.float32)      # entirely below the bare cutoff

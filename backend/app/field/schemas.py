@@ -121,6 +121,14 @@ class ChatResponse(BaseModel):
     message: Optional[str] = None
 
 
+class SiSummaryRequest(BaseModel):
+    """Spatial SI summary request. Engine context arrives from the frontend
+    (same rule as the field summary — never computed here)."""
+    range: dict[str, str] = {}           # {start, end}
+    threshold: float = 0.95
+    engine_context: EngineContext = EngineContext()
+
+
 class SufficiencyResponse(BaseModel):
     """Relative Sufficiency Index read (NDRE / 95th-percentile reference).
     status "unavailable" carries only a note (gated: stale scene / low canopy)."""

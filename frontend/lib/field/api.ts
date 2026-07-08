@@ -149,6 +149,30 @@ export async function getSufficiency(
   return asJson<SufficiencyResponse>(await fetch(`${BASE}/${fieldId}/sufficiency?${q}`, { cache: "no-store" }));
 }
 
+export interface SiSummaryResult {
+  status: string; // "ok" | "unavailable" | "unconfigured" | "error"
+  summary_text?: string | null;
+  generated_at?: string | null;
+  model?: string | null;
+  message?: string | null;
+}
+
+// Spatial AI summary of the masked SI stats (same grounded architecture as the
+// field summary; server-side cache keyed by inputs fingerprint).
+export async function postSiSummary(
+  fieldId: string,
+  body: { range: { start: string; end: string }; threshold: number; engine_context: Record<string, unknown> },
+  force = false
+): Promise<SiSummaryResult> {
+  return asJson<SiSummaryResult>(
+    await fetch(`${BASE}/${fieldId}/sufficiency/summary${force ? "?force=1" : ""}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+  );
+}
+
 export function sufficiencyExportUrl(
   fieldId: string,
   range: { start: string; end: string },

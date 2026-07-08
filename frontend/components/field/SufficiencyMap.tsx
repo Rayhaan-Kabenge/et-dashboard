@@ -1,14 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Grid3x3, CloudOff, Download, Info } from "lucide-react";
+import { Grid3x3, CloudOff, Download, Info, Sparkles, RefreshCw } from "lucide-react";
 import { useField } from "@/lib/field/context";
-import { getSufficiency, sufficiencyExportUrl, type SufficiencyResponse } from "@/lib/field/api";
+import {
+  getSufficiency, postSiSummary, sufficiencyExportUrl,
+  type SiSummaryResult, type SufficiencyResponse,
+} from "@/lib/field/api";
 import CollapsibleCard from "./CollapsibleCard";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type Range = { start: string; end: string } | undefined;
+type EngineContext = Record<string, unknown> | null;
 
 const DEFAULT_THRESHOLD = 0.95;
 const MIN_THRESHOLD = 0.8;
@@ -16,7 +21,13 @@ const MIN_THRESHOLD = 0.8;
 // Honest framing: relative WITHIN-field sufficiency from NDRE — flags zones to
 // investigate. It is NOT a nitrogen prescription, and an internal reference
 // cannot detect whole-field deficiency (only spatial variability).
-export default function SufficiencyMap({ range }: { range: Range }) {
+export default function SufficiencyMap({
+  range,
+  engineContext = null,
+}: {
+  range: Range;
+  engineContext?: EngineContext;
+}) {
   const { field } = useField();
   const [res, setRes] = useState<SufficiencyResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,6 +47,30 @@ export default function SufficiencyMap({ range }: { range: Range }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [field?.id, range?.start, range?.end]);
+
+  // spatial AI summary — re-summarizes when the field, scene/range, or threshold
+  // changes (threshold debounced so slider drags don't spam the endpoint)
+  const [sum, setSum] = useState<SiSummaryResult | null>(null);
+  const [sumLoading, setSumLoading] = useState(false);
+
+  async function runSummary(force = false) {
+    if (!field || range === undefined || res?.status !== "ok") return;
+    setSumLoading(true);
+    try {
+      setSum(await postSiSummary(field.id, { range, threshold, engine_context: engineContext ?? {} }, force));
+    } catch {
+      setSum({ status: "error", message: "Summary unavailable right now." });
+    } finally {
+      setSumLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!field || range === undefined || res?.status !== "ok") return;
+    const t = window.setTimeout(() => runSummary(false), 700); // debounce slider drags
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [field?.id, range?.start, range?.end, threshold, res?.scene_date, res?.status]);
 
   // % of field below the (adjustable) threshold, from the 0.01-wide SI histogram
   const pctBelow = useMemo(() => {
@@ -171,6 +206,41 @@ export default function SufficiencyMap({ range }: { range: Range }) {
               reflect water, soil, or stand differences, not only nitrogen. An internal reference cannot detect
               whole-field deficiency. Cross-check against soil water before applying N.
             </span>
+          </div>
+
+          {/* spatial AI summary (same grounded architecture as the field summary) */}
+          <div className="rounded-lg border border-hairline bg-card p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Badge variant="water" className="gap-1"><Sparkles className="h-3 w-3" /> AI-generated</Badge>
+                {sum?.status === "ok" && sum.generated_at && (
+                  <span className="font-mono text-[11px] text-muted">
+                    {sum.model} · {new Date(sum.generated_at).toLocaleString()}
+                  </span>
+                )}
+              </div>
+              <Button size="sm" variant="outline" onClick={() => runSummary(true)} disabled={sumLoading}>
+                <RefreshCw className={`h-3.5 w-3.5 ${sumLoading ? "animate-spin" : ""}`} />
+                Regenerate
+              </Button>
+            </div>
+            {sumLoading && !sum?.summary_text ? (
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-10/12" />
+                <Skeleton className="h-4 w-7/12" />
+              </div>
+            ) : sum?.status === "ok" && sum.summary_text ? (
+              <>
+                <p className="text-sm leading-relaxed text-ink/85">{sum.summary_text}</p>
+                <div className="mt-2 flex items-start gap-1.5 text-[10px] text-muted">
+                  <Info className="mt-0.5 h-3 w-3 shrink-0" />
+                  <span>Advisory spatial read of the SI numbers above — zones to investigate, not an N prescription.</span>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-muted">{sum?.message || "Generating a spatial read of this map…"}</p>
+            )}
           </div>
         </div>
       )}

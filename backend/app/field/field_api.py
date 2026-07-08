@@ -17,8 +17,8 @@ from . import chat as chat_svc, field_store, geocode, indices, openet, sufficien
 from .geometry import validate_polygon
 from .schemas import (
     ChatRequest, ChatResponse, ETPoint, ETResponse, Field, FieldCreate, FieldImage,
-    GeocodeResponse, IndexPoint, IndexSeries, SufficiencyResponse, SummaryRequest,
-    SummaryResponse)
+    GeocodeResponse, IndexPoint, IndexSeries, SiSummaryRequest, SufficiencyResponse,
+    SummaryRequest, SummaryResponse)
 from .sentinel import SentinelClient, SentinelError
 
 router = APIRouter(prefix="/api/field", tags=["field-health"])
@@ -204,6 +204,16 @@ def field_sufficiency(field_id: str, start: Optional[str] = None, end: Optional[
     except SentinelError as exc:
         return SufficiencyResponse(status="unavailable", field_id=field_id, note=str(exc),
                                    caveat=sufficiency.CAVEAT)
+
+
+@router.post("/{field_id}/sufficiency/summary", response_model=SummaryResponse)
+def field_sufficiency_summary(field_id: str, body: SiSummaryRequest = SiSummaryRequest(),
+                              force: bool = False):
+    """Claude-written spatial read of the masked SI stats (cropped pixels only),
+    grounded on the shared numeric block + sufficiency.spatial_stats. Advisory,
+    investigate-not-prescribe. Cached by fingerprint; ?force=1 regenerates.
+    No SI / no key / failure -> graceful note (never a 500)."""
+    return summary_svc.build_si_summary(_require_field(field_id), body, force=force)
 
 
 @router.get("/{field_id}/sufficiency/export")
