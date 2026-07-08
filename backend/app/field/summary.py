@@ -118,33 +118,43 @@ def build_summary(field: Field, req: SummaryRequest, force: bool = False) -> Sum
 # SI spatial summary — same JSON-grounded architecture, SI-specific guardrails
 # --------------------------------------------------------------------------- #
 SI_SYSTEM_PROMPT = (
-    "You are an agronomy assistant writing a short spatial read of a Relative "
+    "You are an agronomy assistant writing a scannable spatial read of a Relative "
     "Sufficiency Index (SI) map for ONE field. SI = pixel NDRE ÷ an INTERNAL "
     "95th-percentile reference, over CROPPED pixels only (bare/unplanted ground is "
     "already excluded). STRICT RULES:\n"
-    "- Describe ONLY the numbers provided. Never invent, estimate, or recompute SI "
-    "values, percentages, or zones. If something is missing, say it's not available.\n"
+    "- Use ONLY the numbers provided. Never invent, estimate, or recompute SI "
+    "values, percentages, or zones. Quote figures exactly as given (do not re-round). "
+    "If something is missing, say it's not available.\n"
     "- Frame everything as RELATIVE within-field sufficiency — zones to INVESTIGATE, "
-    "never a nitrogen prescription or an N-rate. State that low-SI zones may reflect "
-    "water, soil, or stand differences, not only nitrogen.\n"
-    "- Give the direction of the low-SI zones from the provided location data "
-    "(e.g. 'concentrated in the southwest', 'scattered').\n"
+    "never a nitrogen prescription or an N-rate. Low-SI zones may reflect water, "
+    "soil, or stand differences, not only nitrogen.\n"
+    "- Include the direction of the low-SI zones from the provided location data "
+    "(e.g. 'scattered, mostly northeast').\n"
     "- Water cross-check, ONLY when root-zone data is present: if soil water is "
-    "adequate (depletion comfortably below allowable), note that a nutrient or "
-    "stand cause is more plausible; if soil water is low/near trigger, flag water "
-    "first before reading the map as nutrient stress. Never contradict the engine's "
-    "irrigation decision.\n"
-    "- Always note the internal-reference caveat: this cannot detect whole-field "
-    "deficiency, only spatial variability.\n"
-    "- 3-5 sentences, plain language, reference the actual numbers. No headings, no markdown."
+    "adequate (depletion comfortably below allowable), note a nutrient or stand "
+    "cause is more plausible; if soil water is low/near trigger, flag water first. "
+    "Never contradict the engine's irrigation decision.\n"
+    "- Include the internal-reference caveat: cannot detect whole-field deficiency, "
+    "only spatial variability.\n"
+    "OUTPUT FORMAT (strict): 5-8 key points, ONE PER LINE, each line starting with "
+    '"- ". Each point is a compact phrase of at most ~12 words (a fact, not a '
+    "sentence-paragraph). No preamble, no headings, no markdown beyond the leading "
+    'dash, no blank lines. Example shape: "- 84.7% of cropped area below 0.95 threshold".'
 )
 
 
 def _si_fingerprint(spatial: dict, req: SiSummaryRequest) -> str:
+    """Cache key over the FULL grounding state: scene, threshold, the bare-soil
+    mask (cutoff + cropped fraction + resulting stats), and the engine numbers —
+    so a mask/threshold/scene change always regenerates (no stale summaries)."""
     key = json.dumps({
         "scene": spatial.get("scene_date"), "ref": spatial.get("reference_ndre"),
-        "threshold": req.threshold, "pct": spatial.get("pct_of_cropped_area_below_threshold"),
+        "threshold": req.threshold,
+        "mask_cutoff": spatial.get("bare_soil_cutoff_ndre"),
+        "pct": spatial.get("pct_of_cropped_area_below_threshold"),
         "cropped": spatial.get("cropped_fraction_of_field"),
+        "si_min": spatial.get("si_min"), "si_median": spatial.get("si_median"),
+        "format": "keypoints-v1",
         "depletion": req.engine_context.depletion_mm, "decision": req.engine_context.decision,
     }, sort_keys=True)
     return hashlib.sha256(key.encode()).hexdigest()[:16]

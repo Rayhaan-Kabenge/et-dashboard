@@ -72,14 +72,18 @@ export default function SufficiencyMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [field?.id, range?.start, range?.end, threshold, res?.scene_date, res?.status]);
 
-  // % of field below the (adjustable) threshold, from the 0.01-wide SI histogram
+  // % of field below the (adjustable) threshold, from the 0.01-wide SI histogram.
+  // Compare INTEGER bin indices — (i+1)*0.01 <= t breaks on float artifacts
+  // (95*0.01 = 0.9500…01 silently dropped the 0.94–0.95 bin, showing 82.0%
+  // where the server's exact cropped figure was 84.7%).
   const pctBelow = useMemo(() => {
     const hist = res?.histogram;
     if (!hist || !hist.length) return res?.pct_below_threshold ?? null;
     const total = hist.reduce((a, b) => a + b, 0);
     if (!total) return null;
+    const cutBin = Math.round(threshold * 100); // bins [i*0.01,(i+1)*0.01): include i+1 <= cutBin
     let below = 0;
-    for (let i = 0; i < hist.length; i++) if ((i + 1) * 0.01 <= threshold) below += hist[i];
+    for (let i = 0; i < hist.length; i++) if (i + 1 <= cutBin) below += hist[i];
     return (below / total) * 100;
   }, [res, threshold]);
 
@@ -225,14 +229,12 @@ export default function SufficiencyMap({
               </Button>
             </div>
             {sumLoading && !sum?.summary_text ? (
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-10/12" />
-                <Skeleton className="h-4 w-7/12" />
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
               </div>
             ) : sum?.status === "ok" && sum.summary_text ? (
               <>
-                <p className="text-sm leading-relaxed text-ink/85">{sum.summary_text}</p>
+                <KeyPoints text={sum.summary_text} />
                 <div className="mt-2 flex items-start gap-1.5 text-[10px] text-muted">
                   <Info className="mt-0.5 h-3 w-3 shrink-0" />
                   <span>Advisory spatial read of the SI numbers above — zones to investigate, not an N prescription.</span>
@@ -245,6 +247,29 @@ export default function SufficiencyMap({
         </div>
       )}
     </CollapsibleCard>
+  );
+}
+
+// Parse the model's "- point" lines into grid cells: up to 3 columns, wrapping
+// to new rows as points fill (1 column on mobile). Falls back to prose if the
+// reply isn't a clean list.
+function KeyPoints({ text }: { text: string }) {
+  const points = text
+    .split("\n")
+    .map((l) => l.trim().replace(/^[-•*]\s*/, "").trim())
+    .filter(Boolean);
+  if (points.length < 2) {
+    return <p className="text-sm leading-relaxed text-ink/85">{text}</p>;
+  }
+  return (
+    <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      {points.map((p, i) => (
+        <li key={i} className="flex items-start gap-2 rounded-lg border border-hairline bg-soil-soft/20 px-2.5 py-2">
+          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-water" />
+          <span className="text-[13px] leading-snug text-ink/85">{p}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 

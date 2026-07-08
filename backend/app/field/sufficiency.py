@@ -297,8 +297,11 @@ def spatial_stats(field: Field, start: str, end: str, threshold: float) -> dict:
         "available": True,
         "scene_date": scene_date,
         "reference_method": f"{REFERENCE_PCT}th percentile of cropped in-field NDRE (internal virtual reference)",
-        "reference_ndre": round(reference, 4),
+        # 3 decimals — identical to what the SI card displays, so the narrated
+        # reference matches the panel figure exactly
+        "reference_ndre": round(reference, 3),
         "threshold": threshold,
+        "bare_soil_cutoff_ndre": BARE_SOIL_NDRE,
         "pct_of_cropped_area_below_threshold": round(float((cropped < threshold).mean() * 100.0), 1),
         "cropped_fraction_of_field": round(cropped_fraction, 3),
         "bare_or_unplanted_fraction_excluded": round(1.0 - cropped_fraction, 3),
