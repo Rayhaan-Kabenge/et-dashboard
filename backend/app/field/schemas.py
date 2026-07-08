@@ -132,8 +132,11 @@ class SufficiencyResponse(BaseModel):
     reference_method: Optional[str] = None
     canopy_median_ndre: Optional[float] = None
     valid_fraction: Optional[float] = None
+    bare_soil_cutoff: Optional[float] = None   # NDRE floor; pixels below = bare/unplanted
+    cropped_fraction: Optional[float] = None   # share of valid pixels SI covers
+    bare_fraction: Optional[float] = None
     threshold: Optional[float] = None
-    pct_below_threshold: Optional[float] = None
+    pct_below_threshold: Optional[float] = None  # over CROPPED pixels only
     histogram: Optional[list[int]] = None   # 0.01-wide SI bins over [0, 1.01)
     png_base64: Optional[str] = None
     bbox: Optional[list[float]] = None

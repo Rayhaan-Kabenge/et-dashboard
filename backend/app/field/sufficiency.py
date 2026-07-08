@@ -41,8 +41,14 @@ N_ZONES = 5
 
 # gating — SI is meaningless with sparse canopy or a stale scene
 MAX_SCENE_AGE_DAYS = 30
-MIN_CANOPY_NDRE = 0.20         # median in-field NDRE below this = mostly bare soil
 MIN_VALID_FRACTION = 0.25      # under a quarter valid pixels = don't trust the map
+
+# per-pixel bare-soil mask — SI is computed over actively growing crop only.
+# Pixels with NDRE below this floor ("no meaningful canopy": bare/unplanted
+# ground) are excluded from the reference, the SI map (rendered neutral, not
+# red), the below-threshold %, and the exported zones. Tunable.
+BARE_SOIL_NDRE = 0.20
+MIN_CROPPED_FRACTION = 0.10    # under this share of cropped pixels = no SI read
 
 # display normalization for the heat map (fixed so colors compare across scenes)
 _SI_NORM = (0.5, 1.0)
@@ -141,13 +147,26 @@ def _resolve_scene(field: Field, start: str, end: str) -> str:
 # --------------------------------------------------------------------------- #
 # SI computation + gating
 # --------------------------------------------------------------------------- #
-def _si_surface(ndre: np.ndarray) -> tuple[np.ndarray, float]:
-    valid = ndre[np.isfinite(ndre)]
-    reference = float(np.percentile(valid, REFERENCE_PCT))
+def _si_surface(ndre: np.ndarray) -> tuple[np.ndarray, float, np.ndarray]:
+    """SI over CROPPED pixels only. Bare-soil pixels (NDRE < BARE_SOIL_NDRE) are
+    excluded from the reference and carry NaN in the SI surface; the returned
+    bare mask drives the neutral rendering. The ratio math and the
+    95th-percentile reference logic are unchanged — just computed over crop."""
+    finite = np.isfinite(ndre)
+    bare = finite & (ndre < BARE_SOIL_NDRE)
+    crop = finite & ~bare
+    n_finite = int(finite.sum())
+    cropped_fraction = crop.sum() / n_finite if n_finite else 0.0
+    if n_finite == 0 or cropped_fraction < MIN_CROPPED_FRACTION:
+        raise SufficiencyUnavailable(
+            f"Only {cropped_fraction:.0%} of the field shows meaningful canopy "
+            f"(NDRE ≥ {BARE_SOIL_NDRE}) — not enough cropped area for a sufficiency read "
+            "(early season / bare soil).")
+    reference = float(np.percentile(ndre[crop], REFERENCE_PCT))
     if reference <= 0:
         raise SufficiencyUnavailable("Reference NDRE is non-positive — no usable canopy signal.")
-    si = np.clip(ndre / reference, 0.0, 1.0)   # NaNs stay NaN
-    return si, reference
+    si = np.where(crop, np.clip(ndre / reference, 0.0, 1.0), np.nan)
+    return si, reference, bare
 
 
 def _gate(ndre: np.ndarray, scene_date: str, ref_date: Optional[str] = None) -> None:
@@ -157,18 +176,14 @@ def _gate(ndre: np.ndarray, scene_date: str, ref_date: Optional[str] = None) -> 
             f"Only {finite.mean():.0%} of the field has valid pixels for this scene — SI unavailable.")
     # staleness is judged against the END of the requested range (defaults to today
     # in the API), so live use requires a recent scene while historical ranges with
-    # a scene near the window's end stay coherent.
+    # a scene near the window's end stay coherent. (Canopy sufficiency is gated
+    # per-pixel in _si_surface via the bare-soil mask / MIN_CROPPED_FRACTION.)
     ref = _date.fromisoformat(ref_date) if ref_date else _date.today()
     age = (min(ref, _date.today()) - _date.fromisoformat(scene_date)).days
     if age > MAX_SCENE_AGE_DAYS:
         raise SufficiencyUnavailable(
             f"Latest cloud-free scene is {age} days older than the selected window's end "
             f"(> {MAX_SCENE_AGE_DAYS}) — SI unavailable.")
-    median = float(np.nanmedian(ndre))
-    if median < MIN_CANOPY_NDRE:
-        raise SufficiencyUnavailable(
-            f"Median in-field NDRE is {median:.2f} (< {MIN_CANOPY_NDRE}) — not enough canopy for a "
-            "meaningful sufficiency read (early season / bare soil).")
 
 
 def _ramp(t: np.ndarray) -> np.ndarray:
@@ -183,11 +198,17 @@ def _ramp(t: np.ndarray) -> np.ndarray:
     return rgb
 
 
-def _heatmap_png(si: np.ndarray, upscale_to: int = 512) -> bytes:
+_BARE_RGB = (140, 143, 138)    # neutral grey for bare/unplanted — distinctly NOT the stress ramp
+
+
+def _heatmap_png(si: np.ndarray, bare: Optional[np.ndarray] = None, upscale_to: int = 512) -> bytes:
     lo, hi = _SI_NORM
     t = (si - lo) / (hi - lo)
     rgb = (_ramp(t) * 255).astype(np.uint8)
     alpha = np.where(np.isfinite(si), 255, 0).astype(np.uint8)
+    if bare is not None and bare.any():        # bare ground: neutral, opaque, no SI color
+        rgb[bare] = _BARE_RGB
+        alpha = np.where(bare, 255, alpha).astype(np.uint8)
     img = Image.fromarray(np.dstack([rgb, alpha[..., None]]), "RGBA")
     scale = max(1, round(upscale_to / max(img.width, img.height)))
     if scale > 1:
@@ -203,11 +224,15 @@ def compute(field: Field, start: str, end: str, threshold: float = DEFAULT_THRES
     scene_date = _resolve_scene(field, start, end)
     ndre = _fetch_grid(field, scene_date)
     _gate(ndre, scene_date, ref_date=end)
-    si, reference = _si_surface(ndre)
+    si, reference, bare = _si_surface(ndre)
 
-    finite = si[np.isfinite(si)]
-    hist, _edges = np.histogram(finite, bins=HIST_BINS, range=(0.0, 1.01))
-    pct_below = float((finite < threshold).mean() * 100.0)
+    # cropped pixels only: bare ground is NaN in the SI surface, so the
+    # histogram and the below-threshold % denominator cover crop, not field area
+    cropped = si[np.isfinite(si)]
+    n_valid = int(np.isfinite(ndre).sum())
+    cropped_fraction = float(cropped.size / n_valid) if n_valid else 0.0
+    hist, _edges = np.histogram(cropped, bins=HIST_BINS, range=(0.0, 1.01))
+    pct_below = float((cropped < threshold).mean() * 100.0)
 
     return {
         "status": "ok",
@@ -215,13 +240,16 @@ def compute(field: Field, start: str, end: str, threshold: float = DEFAULT_THRES
         "index": INDEX,
         "scene_date": scene_date,
         "reference_ndre": round(reference, 4),
-        "reference_method": f"{REFERENCE_PCT}th percentile of in-field NDRE",
+        "reference_method": f"{REFERENCE_PCT}th percentile of cropped in-field NDRE",
         "canopy_median_ndre": round(float(np.nanmedian(ndre)), 4),
         "valid_fraction": round(float(np.isfinite(ndre).mean()), 3),
+        "bare_soil_cutoff": BARE_SOIL_NDRE,
+        "cropped_fraction": round(cropped_fraction, 3),
+        "bare_fraction": round(1.0 - cropped_fraction, 3),
         "threshold": threshold,
         "pct_below_threshold": round(pct_below, 1),
-        "histogram": hist.tolist(),           # 0.01-wide SI bins over [0, 1.01)
-        "png_base64": base64.b64encode(_heatmap_png(si)).decode(),
+        "histogram": hist.tolist(),           # 0.01-wide SI bins over [0, 1.01), cropped px only
+        "png_base64": base64.b64encode(_heatmap_png(si, bare)).decode(),
         "bbox": field.bbox,
         "caveat": CAVEAT,
     }
@@ -275,16 +303,19 @@ def _zone_features(field: Field, si: np.ndarray, ndre: np.ndarray, threshold: fl
     return features
 
 
-def _zone_metadata(field: Field, scene_date: str, reference: float, threshold: float) -> dict:
+def _zone_metadata(field: Field, scene_date: str, reference: float, threshold: float,
+                   cropped_fraction: float) -> dict:
     return {
         "field_id": field.id,
         "field_name": field.name,
         "index": INDEX,
         "scene_date": scene_date,
-        "reference_method": f"{REFERENCE_PCT}th-percentile NDRE (in-field virtual reference)",
+        "reference_method": f"{REFERENCE_PCT}th-percentile NDRE (cropped in-field virtual reference)",
         "reference_ndre": round(reference, 4),
         "threshold": threshold,
         "zones": N_ZONES,
+        "bare_soil_cutoff_ndre": BARE_SOIL_NDRE,
+        "cropped_fraction": round(cropped_fraction, 3),
         "crs": "EPSG:4326 (WGS84)",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "caveat": CAVEAT,
@@ -295,9 +326,13 @@ def _zones(field: Field, start: str, end: str, threshold: float) -> tuple[list[d
     scene_date = _resolve_scene(field, start, end)
     ndre = _fetch_grid(field, scene_date)
     _gate(ndre, scene_date, ref_date=end)
-    si, reference = _si_surface(ndre)
+    si, reference, _bare = _si_surface(ndre)
+    # bare pixels carry NaN in the SI surface, so zone masks (np.isfinite) skip
+    # them — bare/unplanted ground never becomes a prescription zone
+    n_valid = int(np.isfinite(ndre).sum())
+    cropped_fraction = float(np.isfinite(si).sum() / n_valid) if n_valid else 0.0
     return (_zone_features(field, si, ndre, threshold),
-            _zone_metadata(field, scene_date, reference, threshold))
+            _zone_metadata(field, scene_date, reference, threshold, cropped_fraction))
 
 
 def export_geojson(field: Field, start: str, end: str, threshold: float) -> tuple[bytes, str]:
@@ -343,8 +378,12 @@ def export_shapefile_zip(field: Field, start: str, end: str, threshold: float) -
         f"Reference method: {meta['reference_method']}\n"
         f"Reference NDRE:   {meta['reference_ndre']}\n"
         f"Threshold used:   {meta['threshold']}\n"
+        f"Bare-soil cutoff: NDRE < {meta['bare_soil_cutoff_ndre']} excluded (bare/unplanted)\n"
+        f"Cropped fraction: {meta['cropped_fraction']:.0%} of valid field pixels\n"
         f"CRS:              {meta['crs']}\n"
         f"Generated:        {meta['generated_at']}\n\n"
+        "Zones cover the CROPPED area only — bare/unplanted ground is excluded\n"
+        "and is not a prescription zone.\n\n"
         "Attributes: SI_value (zone mean SI), SI_class (1=lowest..5=highest),\n"
         "ndre_mean (zone mean NDRE), below_thr (1 = zone mean SI below threshold;\n"
         "DBF caps field names at 10 chars, hence 'below_thr').\n\n"

@@ -80,10 +80,20 @@ export default function SufficiencyMap({ range }: { range: Range }) {
             <Stat
               label="Below threshold"
               value={pctBelow != null ? `${pctBelow.toFixed(1)}%` : "—"}
-              hint="of field area"
+              hint="of cropped area"
               tone={pctBelow != null && pctBelow > 25 ? "warn" : undefined}
             />
           </div>
+
+          {/* coverage: SI is computed over actively growing crop only */}
+          {res.cropped_fraction != null && (
+            <div className="flex items-center gap-1.5 text-[11px] text-muted">
+              <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: "rgb(140,143,138)" }} />
+              SI computed over <span className="font-mono font-semibold text-ink/75">{Math.round(res.cropped_fraction * 100)}%</span> of
+              the field — {Math.round((res.bare_fraction ?? 1 - res.cropped_fraction) * 100)}% bare/unplanted excluded
+              (NDRE&nbsp;&lt;&nbsp;{res.bare_soil_cutoff ?? 0.2}, shown grey)
+            </div>
+          )}
 
           {/* threshold control */}
           <div className="flex items-center gap-3">
@@ -120,10 +130,16 @@ export default function SufficiencyMap({ range }: { range: Range }) {
                 className="mx-auto max-h-[420px] w-auto max-w-full"
                 style={{ imageRendering: "pixelated" }}
               />
-              <div className="mt-2 flex items-center justify-center gap-2 font-mono text-[11px] text-canvas/70">
-                <span>low SI</span>
-                <span className="h-2 w-28 rounded-sm" style={{ background: "linear-gradient(90deg,#bf382b,#c9821f,#2e7d49)" }} />
-                <span>high SI (≈ reference)</span>
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 font-mono text-[11px] text-canvas/70">
+                <span className="inline-flex items-center gap-2">
+                  <span>low SI</span>
+                  <span className="h-2 w-28 rounded-sm" style={{ background: "linear-gradient(90deg,#bf382b,#c9821f,#2e7d49)" }} />
+                  <span>high SI (≈ reference)</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm" style={{ background: "rgb(140,143,138)" }} />
+                  bare / not cropped
+                </span>
               </div>
             </div>
           )}

@@ -32,8 +32,9 @@ def _grid(shape=(20, 20), lo=0.30, hi=0.60) -> np.ndarray:
 def test_si_uses_95th_percentile_reference_and_caps_at_1():
     g = _grid()
     g[5, 5] = 0.90                             # single hot outlier pixel
-    si, ref = sfy._si_surface(g)
-    valid = g[np.isfinite(g)]
+    si, ref, bare = sfy._si_surface(g)
+    valid = g[np.isfinite(g)]                  # all above the bare cutoff here
+    assert not bare.any()
     assert ref == pytest.approx(float(np.percentile(valid, 95)))
     assert ref < 0.90                          # robust reference, NOT the max pixel
     finite = si[np.isfinite(si)]
@@ -41,11 +42,38 @@ def test_si_uses_95th_percentile_reference_and_caps_at_1():
     assert float(finite.min()) == pytest.approx(float(valid.min()) / ref, abs=1e-3)
 
 
+def test_bare_soil_pixels_excluded_from_reference_map_and_zones():
+    """Half the field unplanted (NDRE 0.05): bare pixels must not touch the
+    reference, must be NaN in the SI surface (rendered neutral, not red), and
+    must not appear in exported zones."""
+    f = _field()
+    g = _grid(lo=0.30, hi=0.60)
+    g[:, : g.shape[1] // 2] = 0.05             # left half bare / unplanted
+    si, ref, bare = sfy._si_surface(g)
+
+    crop_vals = g[np.isfinite(g) & (g >= sfy.BARE_SOIL_NDRE)]
+    assert ref == pytest.approx(float(np.percentile(crop_vals, 95)))  # cropped-only reference
+    assert bare.sum() == int((np.isfinite(g) & (g < sfy.BARE_SOIL_NDRE)).sum())
+    assert np.isnan(si[bare]).all()            # bare = no SI value (excluded from map/%)
+    # SI over crop only → min SI reflects the 0.30 edge, never the 0.05 bare ground
+    finite = si[np.isfinite(si)]
+    assert float(finite.min()) >= 0.30 / ref - 1e-3
+
+    feats = sfy._zone_features(f, si, g, threshold=0.95)
+    assert feats                                # zones exist over the cropped half
+    lon0, _lat0, lon1, _lat1 = f.bbox
+    mid = lon0 + (lon1 - lon0) / 2
+    from shapely.geometry import shape as shp_shape
+    for ft in feats:                            # no zone extends into the bare (west) half
+        assert shp_shape(ft["geometry"]).bounds[0] >= mid - 1e-9
+        assert ft["properties"]["ndre_mean"] >= sfy.BARE_SOIL_NDRE
+
+
 def test_gating_blocks_sparse_canopy_and_stale_scene():
     today = date.today().isoformat()
-    bare = np.full((10, 10), 0.10, dtype=np.float32)      # median below canopy min
+    bare = np.full((10, 10), 0.10, dtype=np.float32)      # entirely below the bare cutoff
     with pytest.raises(sfy.SufficiencyUnavailable):
-        sfy._gate(bare, today)
+        sfy._si_surface(bare)                              # no cropped area -> no SI read
     ok = np.full((10, 10), 0.45, dtype=np.float32)
     sfy._gate(ok, today)                                   # healthy canopy passes
     old = (date.today() - timedelta(days=sfy.MAX_SCENE_AGE_DAYS + 5)).isoformat()
@@ -60,7 +88,7 @@ def test_gating_blocks_sparse_canopy_and_stale_scene():
 def test_zones_classify_into_5_with_attributes():
     f = _field()
     g = _grid()
-    si, ref = sfy._si_surface(g)
+    si, ref, _bare = sfy._si_surface(g)
     feats = sfy._zone_features(f, si, g, threshold=0.95)
     assert 1 <= len(feats) <= sfy.N_ZONES
     classes = sorted(ft["properties"]["SI_class"] for ft in feats)

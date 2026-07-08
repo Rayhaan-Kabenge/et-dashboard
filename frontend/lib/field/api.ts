@@ -128,8 +128,11 @@ export interface SufficiencyResponse {
   reference_method?: string | null;
   canopy_median_ndre?: number | null;
   valid_fraction?: number | null;
+  bare_soil_cutoff?: number | null;
+  cropped_fraction?: number | null;
+  bare_fraction?: number | null;
   threshold?: number | null;
-  pct_below_threshold?: number | null;
+  pct_below_threshold?: number | null; // over cropped pixels only
   histogram?: number[] | null; // 0.01-wide SI bins over [0, 1.01)
   png_base64?: string | null;
   bbox?: number[] | null;
