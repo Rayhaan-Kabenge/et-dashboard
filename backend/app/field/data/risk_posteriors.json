@@ -1,0 +1,343 @@
+{
+  "schema_version": "1.0",
+  "source": "Bayesian_TAPS_ThreeZonev7_103Kc \u2014 three-zone skew-normal distributional model",
+  "description": "Pre-computed posterior summaries (skew-normal mu/sigma/alpha with 95% credible intervals) per irrigation zone, per metric. Zones defined by replacement ratio = applied_depth / ETref(100% recommendation). Distributions are per-ZONE (Below/Target/Above); the Target window is one pooled distribution (does NOT resolve within-band position). Display only \u2014 no live computation.",
+  "distribution": "skew_normal",
+  "ratio_basis": "applied_inches / ETref_100pct_recommendation",
+  "zone_bands": {
+    "Below": {
+      "ratio_min": null,
+      "ratio_max": 0.8,
+      "label": "Below window"
+    },
+    "Target": {
+      "ratio_min": 0.8,
+      "ratio_max": 1.0,
+      "label": "Target window (80-100%)"
+    },
+    "Above": {
+      "ratio_min": 1.0,
+      "ratio_max": null,
+      "label": "Above window"
+    }
+  },
+  "zone_observations": {
+    "Below": 438,
+    "Target": 45,
+    "Above": 12
+  },
+  "metric_display_order": [
+    "Yield",
+    "Profit",
+    "IWUE",
+    "NUE",
+    "WNIPI"
+  ],
+  "metrics": {
+    "Yield": {
+      "meta": {
+        "label": "Yield",
+        "units": "bu/ac",
+        "higher_is_better": true
+      },
+      "by_zone": {
+        "Below": {
+          "mu": {
+            "mean": 224.2551975425,
+            "lower": 203.59092825,
+            "upper": 245.48562475
+          },
+          "sigma": {
+            "mean": 16.73130021447763,
+            "lower": 15.42252233384938,
+            "upper": 18.15251749067388
+          },
+          "alpha": {
+            "mean": -0.8885330054307469,
+            "lower": -2.243545955,
+            "upper": 0.8256816069999997
+          }
+        },
+        "Target": {
+          "mu": {
+            "mean": 262.4301612685875,
+            "lower": 237.945086,
+            "upper": 287.3936533
+          },
+          "sigma": {
+            "mean": 15.16160927761905,
+            "lower": 11.90345728251199,
+            "upper": 19.42458896983863
+          },
+          "alpha": {
+            "mean": -1.291595041843633,
+            "lower": -3.46259488,
+            "upper": 1.093477378074999
+          }
+        },
+        "Above": {
+          "mu": {
+            "mean": 262.57334518082,
+            "lower": 229.7499819,
+            "upper": 294.716968575
+          },
+          "sigma": {
+            "mean": 18.15107643446049,
+            "lower": 11.78456356047171,
+            "upper": 29.01506696792008
+          },
+          "alpha": {
+            "mean": -0.7633845618613219,
+            "lower": -3.1224873075,
+            "upper": 1.738325377
+          }
+        }
+      }
+    },
+    "Profit": {
+      "meta": {
+        "label": "Profit",
+        "units": "$/ac",
+        "higher_is_better": true
+      },
+      "by_zone": {
+        "Below": {
+          "mu": {
+            "mean": 187.9680272226113,
+            "lower": -0.4250772199999948,
+            "upper": 379.0587629999999
+          },
+          "sigma": {
+            "mean": 173.6814473080234,
+            "lower": 153.9877651012943,
+            "upper": 196.7566102687535
+          },
+          "alpha": {
+            "mean": -3.926253280525,
+            "lower": -5.97673952,
+            "upper": -2.3440455675
+          }
+        },
+        "Target": {
+          "mu": {
+            "mean": 364.17916087941,
+            "lower": 159.66988145,
+            "upper": 566.9638872500001
+          },
+          "sigma": {
+            "mean": 123.6591686057809,
+            "lower": 76.02570712761427,
+            "upper": 204.4914736795214
+          },
+          "alpha": {
+            "mean": -3.749036830625069,
+            "lower": -6.361510164499999,
+            "upper": -1.336223632500001
+          }
+        },
+        "Above": {
+          "mu": {
+            "mean": 294.9015686964969,
+            "lower": 42.89993797500001,
+            "upper": 533.9097809999998
+          },
+          "sigma": {
+            "mean": 215.4983271352719,
+            "lower": 94.73534759404201,
+            "upper": 434.6591638827721
+          },
+          "alpha": {
+            "mean": -3.848653137554214,
+            "lower": -6.577854832500001,
+            "upper": -1.39704637775
+          }
+        }
+      }
+    },
+    "IWUE": {
+      "meta": {
+        "label": "IWUE",
+        "units": "kg/m3 (rel.)",
+        "higher_is_better": true
+      },
+      "by_zone": {
+        "Below": {
+          "mu": {
+            "mean": 23.3368822027125,
+            "lower": 12.82997655,
+            "upper": 34.0598772
+          },
+          "sigma": {
+            "mean": 6.437685050421208,
+            "lower": 5.947100768463535,
+            "upper": 6.984792915733336
+          },
+          "alpha": {
+            "mean": 5.713441295775,
+            "lower": 3.8729647125,
+            "upper": 8.020456592499999
+          }
+        },
+        "Target": {
+          "mu": {
+            "mean": 19.256498828509,
+            "lower": 5.558672319999999,
+            "upper": 33.4700616725
+          },
+          "sigma": {
+            "mean": 1.756765814540418,
+            "lower": 1.347051075941404,
+            "upper": 2.335193269933074
+          },
+          "alpha": {
+            "mean": 5.371139767282898,
+            "lower": 2.5468208075,
+            "upper": 8.4805574725
+          }
+        },
+        "Above": {
+          "mu": {
+            "mean": 19.69484018217988,
+            "lower": 3.2232160225,
+            "upper": 36.60175569249999
+          },
+          "sigma": {
+            "mean": 2.209890602684747,
+            "lower": 1.176879519740287,
+            "upper": 4.219797633082968
+          },
+          "alpha": {
+            "mean": 5.732004248502881,
+            "lower": 3.0882982825,
+            "upper": 8.719898169499999
+          }
+        }
+      }
+    },
+    "NUE": {
+      "meta": {
+        "label": "NUE",
+        "units": "index",
+        "higher_is_better": true
+      },
+      "by_zone": {
+        "Below": {
+          "mu": {
+            "mean": 0.48603141289625,
+            "lower": 0.3367331415,
+            "upper": 0.63529068625
+          },
+          "sigma": {
+            "mean": 0.1044448609338527,
+            "lower": 0.0961201262278843,
+            "upper": 0.1134614687208073
+          },
+          "alpha": {
+            "mean": 0.02456532170957118,
+            "lower": -1.5493466525,
+            "upper": 1.6337249
+          }
+        },
+        "Target": {
+          "mu": {
+            "mean": 0.6250412430336713,
+            "lower": 0.44401658795,
+            "upper": 0.803025381
+          },
+          "sigma": {
+            "mean": 0.0927922177830988,
+            "lower": 0.07318683139520567,
+            "upper": 0.1193497372427191
+          },
+          "alpha": {
+            "mean": 0.02812316894770999,
+            "lower": -2.588746764,
+            "upper": 2.663786305
+          }
+        },
+        "Above": {
+          "mu": {
+            "mean": 0.6158099655459075,
+            "lower": 0.386852342975,
+            "upper": 0.8411954154999998
+          },
+          "sigma": {
+            "mean": 0.0741540208727037,
+            "lower": 0.04520688174849281,
+            "upper": 0.1255521283707031
+          },
+          "alpha": {
+            "mean": 0.1100926459898063,
+            "lower": -2.4808922045,
+            "upper": 2.73255436375
+          }
+        }
+      }
+    },
+    "WNIPI": {
+      "meta": {
+        "label": "WNIPI",
+        "units": "index",
+        "higher_is_better": true
+      },
+      "by_zone": {
+        "Below": {
+          "mu": {
+            "mean": 0.20822335856275,
+            "lower": 0.155851079,
+            "upper": 0.25635311275
+          },
+          "sigma": {
+            "mean": 0.04343205498131571,
+            "lower": 0.03972548133681722,
+            "upper": 0.047496182847994
+          },
+          "alpha": {
+            "mean": -0.8090450779240137,
+            "lower": -2.3750009675,
+            "upper": 1.250479552499998
+          }
+        },
+        "Target": {
+          "mu": {
+            "mean": 0.2294252593723937,
+            "lower": 0.1684245097375,
+            "upper": 0.287760051125
+          },
+          "sigma": {
+            "mean": 0.03151528316701564,
+            "lower": 0.02446665092876383,
+            "upper": 0.0412519996295529
+          },
+          "alpha": {
+            "mean": -1.005328011946536,
+            "lower": -3.506299698,
+            "upper": 1.714912350749999
+          }
+        },
+        "Above": {
+          "mu": {
+            "mean": 0.1973223190210898,
+            "lower": 0.1239571581,
+            "upper": 0.267993098325
+          },
+          "sigma": {
+            "mean": 0.02644668619653969,
+            "lower": 0.01539748515462114,
+            "upper": 0.04595400705652052
+          },
+          "alpha": {
+            "mean": -0.7304530556457199,
+            "lower": -3.343746705,
+            "upper": 2.139420857399998
+          }
+        }
+      }
+    }
+  },
+  "caveats": [
+    "Target (n=45) and especially Above (n=12) are data-thin; credible bands are wider there and must be shown honestly.",
+    "This three-zone model does not resolve risk continuously within the 80-100% band; a continuous-ratio model is a planned extension.",
+    "Profit posteriors carry large spread (small n, high year-to-year price/weather variance)."
+  ]
+}
