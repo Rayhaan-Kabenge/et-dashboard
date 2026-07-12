@@ -27,9 +27,19 @@ export default function DepletionChart({ state }: { state: StateResponse }) {
   const remainingOf = (p: (typeof series)[number]) =>
     p.ad != null && p.depletion != null ? toDisplay(p.ad - p.depletion, unit) : null;
 
+  // Requirement window (guardrails, not a setpoint): the engine's 100% requirement
+  // is the water it actually recommended — series[].applied is set ONLY on days
+  // the engine triggered, so the cumulative requirement = running sum of triggered
+  // irrigation. Upper bound = 100% of that; lower = 80% (the validated Target
+  // window at 35% MAD). Display-only — derived from existing /api/state output.
+  const fertDates = new Set(state.schedule.filter((s) => s.type === "Fert").map((s) => s.date));
+  let reqCum = 0;
+
   const data = series.map((p, i) => {
     const rem = remainingOf(p);
     const isF = p.is_forecast;
+    if (p.applied > 0 && !fertDates.has(p.date)) reqCum += p.applied; // irrigation requirement only
+    const reqU = toDisplay(reqCum, unit);
     return {
       date: p.date,
       label: fmtDate(p.date),
@@ -39,8 +49,11 @@ export default function DepletionChart({ state }: { state: StateResponse }) {
       precip: toDisplay(p.precip, unit),
       applied: p.applied,
       isForecast: isF,
+      reqBand: reqCum > 0 && reqU != null ? ([reqU * 0.8, reqU] as [number, number]) : null,
+      reqUpper: reqCum > 0 ? reqU : null,
     };
   });
+  const hasRequirement = reqCum > 0;
 
   const firstForecast = series.find((p) => p.is_forecast)?.date;
   const lastDate = series[series.length - 1]?.date;
@@ -75,7 +88,20 @@ export default function DepletionChart({ state }: { state: StateResponse }) {
         <YAxis tick={AXIS} tickLine={false} axisLine={false} width={40}
           domain={[(dataMin: number) => Math.min(0, dataMin), "auto"]}
           label={{ value: `water remaining (${unit})`, angle: -90, position: "insideLeft", style: { fontSize: 11, fill: "#6B7069", fontFamily: "var(--font-mono)" } }} />
+        {hasRequirement && (
+          <YAxis yAxisId="req" orientation="right" tick={AXIS} tickLine={false} axisLine={false} width={44}
+            domain={[0, "auto"]}
+            label={{ value: `cum. requirement (${unit})`, angle: 90, position: "insideRight", style: { fontSize: 11, fill: "#6B7069", fontFamily: "var(--font-mono)" } }} />
+        )}
         <Tooltip content={<ChartTip unit={unit} />} cursor={{ stroke: "#E7E5DF" }} />
+
+        {/* requirement window — 80–100% of the engine's cumulative recommendation
+            (guardrails to stay within, not a setpoint); steps up on trigger days */}
+        {hasRequirement && (
+          <Area yAxisId="req" type="stepAfter" dataKey="reqBand" name="Requirement window (80–100%)"
+            stroke="var(--soil)" strokeOpacity={0.55} strokeWidth={1}
+            fill="var(--soil)" fillOpacity={0.14} dot={false} isAnimationActive={false} connectNulls={false} />
+        )}
 
         {/* trigger line: the gauge is empty here — irrigate when the line falls to it */}
         <ReferenceLine y={0} stroke="var(--status-now)" strokeWidth={1.5} strokeDasharray="5 4"
@@ -119,6 +145,7 @@ function ChartTip({ active, payload, label, unit }: any) {
       </div>
       <Row k="water remaining" v={rem != null ? `${fmt(rem)} ${unit}` : "—"} />
       <Row k="full (AD)" v={row?.full != null ? `${fmt(row.full)} ${unit}` : "—"} />
+      {row?.reqBand ? <Row k="req. window (aim within)" v={`${fmt(row.reqBand[0])}–${fmt(row.reqBand[1])} ${unit}`} /> : null}
       {row?.precip ? <Row k="precip" v={`${fmt(row.precip)} ${unit}`} /> : null}
       {row?.applied ? <Row k="applied" v={`${fmt(toDisplay(row.applied, unit) as number)} ${unit}`} /> : null}
     </div>

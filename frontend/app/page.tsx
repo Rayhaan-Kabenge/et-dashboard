@@ -129,6 +129,9 @@ function Legend() {
       <span className="inline-flex items-center gap-1.5">
         <span className="h-0 w-4 border-t-2 border-dashed border-status-now" /> trigger
       </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="h-2.5 w-4 rounded-sm bg-soil/25 ring-1 ring-inset ring-soil/40" /> requirement window (80–100%)
+      </span>
     </div>
   );
 }
