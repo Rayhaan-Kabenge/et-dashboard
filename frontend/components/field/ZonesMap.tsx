@@ -246,6 +246,9 @@ export default function ZonesMap() {
               <>
                 <input value={zoneName} onChange={(e) => setZoneName(e.target.value)} placeholder="Zone name (e.g. North half)"
                   className="h-8 min-w-[150px] flex-1 rounded-md border border-hairline bg-card px-2.5 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40" />
+                {/* MVP: the crop picks the data source — corn→corn sheet, sorghum→sorghum sheet.
+                    Two same-crop zones therefore share a sheet + window (documented decision;
+                    per-zone independent sources is a deferred enhancement — see farm/api._sheet_for_crop). */}
                 <select value={zoneCrop} onChange={(e) => setZoneCrop(e.target.value)}
                   className="h-8 rounded-md border border-hairline bg-card px-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40">
                   {crops.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}

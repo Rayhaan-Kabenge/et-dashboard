@@ -54,16 +54,38 @@ def set_field_boundary(field_id: str, body: BoundaryUpdate):
     return field
 
 
+def _sheet_for_crop(crop: str) -> str:
+    """MVP SHEET-ASSIGNMENT RULE (documented decision, not silent behavior):
+
+    A zone's CROP determines its data source — "corn" → the corn sheet,
+    "sorghum" → the sorghum sheet — via the config crop registry. Consequence:
+    two zones that share a crop SHARE the sheet and therefore produce IDENTICAL
+    windows. This is an accepted MVP simplification because our real field has
+    exactly one corn zone + one sorghum zone, so crop uniquely identifies the
+    source today.
+
+    DEFERRED ENHANCEMENT — per-zone independent data sources: when two same-crop
+    zones must differ (their own readings/schedules → different windows), stop
+    deriving the sheet from the crop and give each zone its OWN sheet_id here.
+    The seam already exists: the Zone model stores a per-zone `sheet_id` and
+    ZoneDraw accepts an explicit `sheet_id` override — wire a zone-level sheet
+    mapping through instead of this crop lookup. THIS is the place to extend.
+    """
+    return resolve_crop(crop, get_settings())
+
+
 @router.post("/fields/{field_id}/zones", response_model=Field)
 def add_zone(field_id: str, body: ZoneDraw):
-    """Add a management zone drawn on the map: a user name + a crop (→ sheet_id via
-    the registry) + an optional polygon. Two zones may share a crop — identity is
-    name+boundary. Area is computed from the polygon."""
+    """Add a management zone drawn on the map: a user name + a crop (→ sheet_id) +
+    an optional polygon. Two zones may share a crop — identity is name+boundary.
+    Area is computed from the polygon."""
     if body.boundary is not None:
         err = validate_polygon(body.boundary)
         if err:
             raise HTTPException(status_code=422, detail=f"invalid zone geometry: {err}")
-    sheet_id = body.sheet_id or resolve_crop(body.crop, get_settings())
+    # MVP: crop → sheet (see _sheet_for_crop). An explicit sheet_id override is the
+    # forward-compatible seam for per-zone independent sources (deferred).
+    sheet_id = body.sheet_id or _sheet_for_crop(body.crop)
     field = store.add_zone(field_id, name=body.name, crop=body.crop.strip().lower(),
                            sheet_id=sheet_id, boundary=body.boundary)
     if field is None:
@@ -73,12 +95,14 @@ def add_zone(field_id: str, body: ZoneDraw):
 
 @router.put("/fields/{field_id}/zones/{zone_id}", response_model=Field)
 def update_zone(field_id: str, zone_id: str, body: ZonePatch):
-    """Rename, re-crop (re-resolves sheet_id), or (re)draw a zone's boundary."""
+    """Rename, re-crop (re-resolves sheet_id per the MVP crop→sheet rule), or
+    (re)draw a zone's boundary."""
     if body.boundary is not None:
         err = validate_polygon(body.boundary)
         if err:
             raise HTTPException(status_code=422, detail=f"invalid zone geometry: {err}")
-    sheet_id = resolve_crop(body.crop, get_settings()) if body.crop else None
+    # MVP: re-cropping re-derives the sheet from the crop (see _sheet_for_crop).
+    sheet_id = _sheet_for_crop(body.crop) if body.crop else None
     field = store.update_zone(field_id, zone_id, name=body.name,
                               crop=body.crop.strip().lower() if body.crop else None,
                               sheet_id=sheet_id, boundary=body.boundary)

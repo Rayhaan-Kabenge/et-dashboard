@@ -20,7 +20,11 @@ class Zone(BaseModel):
     id: str
     name: str                                   # user label — "Corn block", "North half"
     crop: str                                   # "corn" | "sorghum" | ...
-    sheet_id: str                               # drives this zone's engine run
+    # Drives this zone's engine run. MVP: derived from `crop` (corn→corn sheet,
+    # sorghum→sorghum sheet), so same-crop zones share it and produce identical
+    # windows — an accepted simplification. It is stored PER ZONE so a future
+    # slice can give same-crop zones independent sources. See farm/api._sheet_for_crop.
+    sheet_id: str
     season_year: Optional[int] = None
     boundary: Optional[dict[str, Any]] = None   # GeoJSON polygon drawn within the field
     area_acres: Optional[float] = None          # computed from the polygon
