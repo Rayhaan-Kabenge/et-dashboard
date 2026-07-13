@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
-// Active crop lives in the URL (?crop=corn|sorghum) so it survives refresh and is
-// shareable. Shared by both tabs. Default is corn when absent. We read/write the
-// param via window.history (no useSearchParams → no Suspense-boundary build dance)
-// and broadcast a "cropchange" event so every consumer in the tab stays in sync.
+// The active crop is a READ-ONLY alias of the active zone's crop. Zone selection
+// is the single selector: setActiveZone (lib/zones) writes ?zone= AND ?crop=
+// together and fires "cropchange", so crop can never diverge from the zone. There
+// is deliberately NO setter here — nothing may set crop independently (that was
+// the old crop-toggle desync path; the toggle is gone). `?crop=` survives refresh
+// and stays shareable; consumers only read it.
 export const DEFAULT_CROP = "corn";
 
 export function readCrop(): string {
@@ -21,20 +23,12 @@ export function useCrop() {
     const sync = () => setCropState(readCrop());
     sync(); // adopt the URL's crop on mount
     window.addEventListener("popstate", sync);
-    window.addEventListener("cropchange", sync);
+    window.addEventListener("cropchange", sync); // fired by setActiveZone
     return () => {
       window.removeEventListener("popstate", sync);
       window.removeEventListener("cropchange", sync);
     };
   }, []);
 
-  // URL is the single source of truth: update it, then let the event re-read.
-  const setCrop = useCallback((next: string) => {
-    const url = new URL(window.location.href);
-    url.searchParams.set("crop", next);
-    window.history.replaceState(window.history.state, "", url.toString());
-    window.dispatchEvent(new Event("cropchange"));
-  }, []);
-
-  return { crop, setCrop };
+  return { crop };
 }
