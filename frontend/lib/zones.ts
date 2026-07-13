@@ -176,15 +176,19 @@ export function useActiveZone() {
     [data]
   );
 
-  // Self-heal a stale ?zone= that points at a zone that no longer exists (e.g. a
-  // shared/bookmarked link to a since-deleted zone). The view already falls back
-  // via the resolution order above; this rewrites the URL to the resolved zone so
-  // it never lingers on a deleted zone_id.
+  // Self-heal the URL to the resolved active zone so the two params can NEVER
+  // persist in a divergent state. Two cases:
+  //   • ?zone= points at a zone that no longer exists (deleted / stale link), or
+  //   • ?crop= disagrees with the active zone's crop (e.g. a hand-crafted
+  //     ?zone=<cornZone>&crop=sorghum).
+  // Either way we rewrite ?zone= + ?crop= from the single source of truth (the
+  // resolved zone), so crop is always exactly the active zone's crop.
   useEffect(() => {
-    if (zoneParam && zones.length > 0 && !zones.some((z) => z.id === zoneParam) && zone) {
-      setActiveZone(zone.id);
-    }
-  }, [zoneParam, zones, zone, setActiveZone]);
+    if (!zone || zones.length === 0) return;
+    const staleZone = zoneParam != null && !zones.some((z) => z.id === zoneParam);
+    const cropMismatch = crop.toLowerCase() !== zone.crop.toLowerCase();
+    if (staleZone || cropMismatch) setActiveZone(zone.id);
+  }, [zoneParam, zones, zone, crop, setActiveZone]);
 
   return { zone, zones, field, crop, loading, error, setActiveZone, reload };
 }
