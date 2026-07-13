@@ -10,7 +10,6 @@ import RootZoneMeter from "@/components/RootZoneMeter";
 import RecommendationPanel from "@/components/RecommendationPanel";
 import WeatherBar from "@/components/WeatherBar";
 import DepletionChart from "@/components/DepletionChart";
-import RiskPanel from "@/components/RiskPanel";
 import GrowthStageCard from "@/components/GrowthStageCard";
 import RecordsPanel from "@/components/RecordsPanel";
 import SensorPane from "@/components/SensorPane";
@@ -110,7 +109,17 @@ export default function Page() {
           <GrowthStageCard state={state} crop={crop} />
         </div>
 
-        <RiskPanel zone={zone} />
+        {/*
+          Risk-environment panel (Part B) is deferred — the three-band
+          skew-normal distribution visualization is being redesigned with the
+          advisor before we commit to a producer-legible representation, so the
+          UI is intentionally pulled here. The data + backend remain intact and
+          functional and can drive a new panel later:
+            • posteriors: backend/app/field/data/risk_posteriors.json
+            • endpoint:   GET /api/risk?zone_id=  (per-zone, corn-only for now)
+          `zone` (from useActiveZone) is still used to drive the per-zone
+          requirement window (Part A). Re-mount a risk panel here when ready.
+        */}
 
         <RecordsPanel state={state} />
         <SensorPane />
