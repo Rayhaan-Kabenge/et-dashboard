@@ -111,7 +111,6 @@ export default function MeterOverlay() {
     return v == null ? "—" : `${v.toFixed(unit === "in" ? 2 : 1)} ${unit}`;
   };
   const hasReadings = (meter?.points.length ?? 0) > 0;
-  const hasPumped = (overlay?.pumpedTotalMm ?? 0) > 0;
 
   return (
     <div className="card p-6">
@@ -127,18 +126,6 @@ export default function MeterOverlay() {
             </p>
           </div>
         </div>
-        {overlay?.tracking && hasPumped && (
-          <span
-            className="hidden shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[11px] sm:inline-flex"
-            style={{
-              color: TRACK_COLOR[overlay.tracking],
-              background: `color-mix(in srgb, ${TRACK_COLOR[overlay.tracking]} 12%, transparent)`,
-            }}
-          >
-            <span className="h-2 w-2 rounded-full" style={{ background: TRACK_COLOR[overlay.tracking] }} />
-            {TRACK_LABEL[overlay.tracking]}
-          </span>
-        )}
       </div>
 
       {open && (
@@ -202,24 +189,67 @@ export default function MeterOverlay() {
   );
 }
 
+// Two DISTINCT reads: (1) tracking vs plan (above/on/below the recommended total)
+// and (2) system efficiency (the loss gap) — the latter only when pumped ≥
+// recommended; a deficit is shown as a deficit, never as ">100% efficiency".
 function EfficiencyStrip({ overlay, fmt }: { overlay: Overlay; fmt: (mm: number) => string }) {
-  const eff = overlay.efficiencyPct;
+  const { pumpedTotalMm, recommendedTotalMm, tracking, efficiencyPct, deficit } = overlay;
+  const eff = efficiencyPct;
+  const lossGap = eff != null ? 100 - eff : null;
+  const pctOfPlan =
+    recommendedTotalMm > 0 && pumpedTotalMm > 0
+      ? Math.round((pumpedTotalMm / recommendedTotalMm) * 100)
+      : null;
+
   return (
-    <div className="grid gap-3 sm:grid-cols-3">
-      <Stat label="Total pumped (meter)" value={fmt(overlay.pumpedTotalMm)} />
-      <Stat label="Total recommended (all zones)" value={fmt(overlay.recommendedTotalMm)} />
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <Stat label="Total pumped (meter)" value={fmt(pumpedTotalMm)} />
+      <Stat label="Total recommended (all zones)" value={fmt(recommendedTotalMm)} />
+
+      {/* Read 1 — tracking vs the plan */}
+      <div className="rounded-lg border border-hairline bg-soil-soft/20 px-3 py-2">
+        <div className="stat-label">Tracking vs plan</div>
+        {tracking ? (
+          <div className="mt-0.5 font-mono text-sm font-semibold" style={{ color: TRACK_COLOR[tracking] }}>
+            {TRACK_LABEL[tracking]}
+          </div>
+        ) : (
+          <div className="mt-0.5 font-mono text-sm text-muted">no recommendation yet</div>
+        )}
+        <div className="font-mono text-[11px] text-muted">
+          {pctOfPlan != null ? `pumped ${pctOfPlan}% of the recommended total` : "—"}
+        </div>
+      </div>
+
+      {/* Read 2 — system efficiency (loss gap), only when pumped ≥ recommended */}
       <div className="rounded-lg border border-hairline bg-water/[0.05] px-3 py-2">
         <div className="stat-label flex items-center gap-1.5">
-          <Info className="h-3 w-3 text-water" /> Pivot efficiency
+          <Info className="h-3 w-3 text-water" /> System efficiency
         </div>
-        <div className="mt-0.5 font-mono text-lg font-semibold text-ink">
-          {eff != null ? `${eff.toFixed(0)}%` : "—"}
-        </div>
-        <div className="font-mono text-[11px] leading-snug text-muted">
-          {eff != null
-            ? "of pumped water that matched the plan"
-            : "add a reading beyond the baseline"}
-        </div>
+        {eff != null ? (
+          <>
+            <div className="mt-0.5 font-mono text-lg font-semibold text-ink">{eff.toFixed(0)}%</div>
+            <div className="font-mono text-[11px] leading-snug text-muted">
+              loss gap {lossGap!.toFixed(0)}% — pumped water not matched to the plan
+            </div>
+          </>
+        ) : deficit ? (
+          <>
+            <div className="mt-0.5 font-mono text-sm font-semibold" style={{ color: TRACK_COLOR.below }}>
+              deficit — behind plan
+            </div>
+            <div className="font-mono text-[11px] leading-snug text-muted">
+              efficiency applies once pumped ≥ recommended
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="mt-0.5 font-mono text-lg font-semibold text-ink/40">—</div>
+            <div className="font-mono text-[11px] leading-snug text-muted">
+              {pumpedTotalMm > 0 ? "no recommendation yet to compare" : "add a reading beyond the baseline"}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -412,8 +442,9 @@ function MeterForm({
       </div>
 
       <p className="mt-3 font-mono text-[11px] leading-relaxed text-ink/45">
-        basis 27,154 gal = 1 acre-inch · efficiency = recommended ÷ pumped. Most meaningful when applications
-        followed the recommendation; the gap reflects system losses (leaks/drift/evaporation) and/or deviation from the plan.
+        basis 27,154 gal = 1 acre-inch. System efficiency = recommended ÷ pumped, shown only once pumped ≥ recommended
+        (the gap = losses/excess); under-applying is a deficit, not efficiency. It mixes system losses
+        (leaks/drift/evaporation) with deviation from the plan, so it’s cleanest when applications followed the recommendation.
       </p>
     </div>
   );

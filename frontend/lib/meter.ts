@@ -97,8 +97,11 @@ export interface Overlay {
   recommendedTotalMm: number; // as of the latest reading date (fair, same-date compare)
   pumpedTotalMm: number;
   latestReadingDate: string | null;
-  efficiencyPct: number | null; // of the pumped water, how much matched the plan (≤100%)
-  tracking: Tracking | null;
+  // Two DISTINCT reads:
+  tracking: Tracking | null;    // (1) tracking vs plan: above / on-track / below the recommended total
+  efficiencyPct: number | null; // (2) system efficiency (loss metric): ONLY when pumped >= recommended,
+                                //     so it is ≤100 by construction; null in deficit (see `deficit`).
+  deficit: boolean;             // pumped < recommended — behind plan; efficiency does not apply
 }
 
 /**
@@ -148,15 +151,22 @@ export function buildOverlay(states: StateResponse[], meterPoints: MeterPoint[])
 
   let efficiencyPct: number | null = null;
   let tracking: Tracking | null = null;
-  if (pumpedTotalMm > 0) {
-    efficiencyPct = Math.min(100, (recommendedTotalMm / pumpedTotalMm) * 100);
-    if (recommendedTotalMm > 0) {
-      const ratio = pumpedTotalMm / recommendedTotalMm;
-      tracking = ratio > 1.1 ? "above" : ratio < 0.9 ? "below" : "on-track";
+  let deficit = false;
+  if (pumpedTotalMm > 0 && recommendedTotalMm > 0) {
+    const ratio = pumpedTotalMm / recommendedTotalMm;
+    tracking = ratio > 1.1 ? "above" : ratio < 0.9 ? "below" : "on-track";
+    // System efficiency is a LOSS metric — it only reads meaningfully once at
+    // least the recommended amount was pumped; then recommended/pumped ≤ 1 and
+    // the gap below 100% = losses/excess. When pumped < recommended it's a
+    // DEFICIT (behind plan), not "efficiency" — leave it null and flag deficit.
+    if (pumpedTotalMm >= recommendedTotalMm) {
+      efficiencyPct = (recommendedTotalMm / pumpedTotalMm) * 100; // ≤ 100 by construction
+    } else {
+      deficit = true;
     }
   }
 
-  return { rows, recommendedTotalMm, pumpedTotalMm, latestReadingDate, efficiencyPct, tracking };
+  return { rows, recommendedTotalMm, pumpedTotalMm, latestReadingDate, efficiencyPct, tracking, deficit };
 }
 
 export const TRACK_COLOR: Record<Tracking, string> = {
