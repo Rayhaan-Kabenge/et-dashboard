@@ -11,6 +11,7 @@ import RecommendationPanel from "@/components/RecommendationPanel";
 import WeatherBar from "@/components/WeatherBar";
 import DepletionChart from "@/components/DepletionChart";
 import MeterOverlay from "@/components/MeterOverlay";
+import ZoneInfoBar from "@/components/ZoneInfoBar";
 import GrowthStageCard from "@/components/GrowthStageCard";
 import RecordsPanel from "@/components/RecordsPanel";
 import SensorPane from "@/components/SensorPane";
@@ -83,6 +84,8 @@ export default function Page() {
             Forecast only — no actual weather logged yet this season, so values shown are projections.
           </div>
         )}
+        <ZoneInfoBar state={state} />
+
         <HeroBanner state={state} />
 
         <RootZoneMeter state={state} />
@@ -97,9 +100,14 @@ export default function Page() {
               <div className="flex items-center gap-2">
                 <CardChevron open={depOpen} onClick={() => setDepOpen((o) => !o)} label="depletion forecast" />
                 <div>
-                  <h3 className="text-lg font-semibold text-ink">Water remaining</h3>
+                  <h3 className="flex items-center gap-2 text-lg font-semibold text-ink">
+                    Water remaining
+                    <span className="rounded-full bg-brand/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-brand">
+                      {zone ? zone.name : "zone"}
+                    </span>
+                  </h3>
                   <p className="text-sm text-ink/50">
-                    Root-zone water left before the trigger — falls with crop use, rises with rain/irrigation · forecast through {fmtDate(state.freshness.forecast_through)}
+                    This zone’s root-zone water before the trigger — falls with crop use, rises with rain/irrigation · forecast through {fmtDate(state.freshness.forecast_through)}
                   </p>
                 </div>
               </div>

@@ -11,7 +11,7 @@ import { Upload, Save, X, Layers, Trash2, MapPin, Sprout } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fetchCrops, type CropOption } from "@/lib/api";
 import {
-  useFarmFields, setFieldBoundary, addZone, deleteZone, type GeoPolygon, type Zone,
+  useActiveZone, setFieldBoundary, addZone, deleteZone, type GeoPolygon, type Zone,
 } from "@/lib/zones";
 import MapSearch, { type FlyTo } from "./MapSearch";
 
@@ -82,7 +82,7 @@ function FitTo({ geom }: { geom: GeoPolygon | null }) {
  * field-health polygon for now; this map is the engine field/zones only.
  */
 export default function ZonesMap() {
-  const { field, zones, loading, reload } = useFarmFields();
+  const { field, zones, loading, reload, zone: activeZone, setActiveZone } = useActiveZone();
   const [pending, setPending] = useState<GeoPolygon | null>(null);
   const [mode, setMode] = useState<"field" | "zone">("zone");
   const [zoneName, setZoneName] = useState("");
@@ -208,12 +208,19 @@ export default function ZonesMap() {
             <GeoJSON key={`field-${JSON.stringify(fieldBoundary.coordinates).length}`} data={fieldBoundary as any}
               style={{ color: "#FBFAF7", weight: 2.5, fill: false }} />
           )}
-          {zones.map((z, i) =>
-            z.boundary ? (
-              <GeoJSON key={`zone-${z.id}-${z.area_acres}`} data={z.boundary as any}
-                style={{ color: zoneColor(z.crop, i), weight: 2, fillColor: zoneColor(z.crop, i), fillOpacity: 0.22 }} />
-            ) : null
-          )}
+          {zones.map((z, i) => {
+            if (!z.boundary) return null;
+            const active = z.id === activeZone?.id;
+            const c = zoneColor(z.crop, i);
+            // click a zone polygon → drill in (sets the active zone); the active
+            // zone is highlighted with a bright thick stroke + heavier fill.
+            return (
+              <GeoJSON key={`zone-${z.id}-${z.area_acres}-${active}`} data={z.boundary as any}
+                eventHandlers={{ click: () => setActiveZone(z.id) }}
+                style={{ color: active ? "#FBFAF7" : c, weight: active ? 4 : 2,
+                         fillColor: c, fillOpacity: active ? 0.5 : 0.2 }} />
+            );
+          })}
           {pending && (
             <GeoJSON key={`pending-${JSON.stringify(pending.coordinates).length}`} data={pending as any}
               style={{ color: "#C9821F", weight: 2.5, dashArray: "5 4", fillColor: "#C9821F", fillOpacity: 0.14 }} />
@@ -281,20 +288,28 @@ export default function ZonesMap() {
           <p className="text-sm text-ink/50">No zones yet.</p>
         ) : (
           <ul className="divide-y divide-hairline/70">
-            {zones.map((z, i) => (
-              <li key={z.id} className="flex items-center gap-3 py-2">
-                <span className="h-3 w-3 shrink-0 rounded-sm" style={{ background: zoneColor(z.crop, i) }} />
-                <span className="font-medium text-ink">{z.name}</span>
-                <span className="rounded-full bg-soil-soft/50 px-2 py-0.5 font-mono text-[11px] text-soil-deep">{z.crop}</span>
-                <span className="font-mono text-[11px] text-muted">
-                  {z.boundary ? `${z.area_acres?.toFixed(1) ?? "—"} ac` : "no geometry — still runs its window"}
-                </span>
-                <button type="button" onClick={() => removeZone(z)} aria-label={`Remove ${z.name}`}
-                  className="ml-auto rounded-md p-1 text-muted transition-colors hover:bg-status-now/10 hover:text-status-now">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </li>
-            ))}
+            {zones.map((z, i) => {
+              const active = z.id === activeZone?.id;
+              // click a row → drill in (also reaches zones with no drawn geometry,
+              // which can't be clicked on the map). Stays in sync with map clicks.
+              return (
+                <li key={z.id}
+                  className={`-mx-2 flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 transition-colors ${active ? "bg-brand/[0.07] ring-1 ring-inset ring-brand/25" : "hover:bg-ink/[0.03]"}`}
+                  onClick={() => setActiveZone(z.id)} aria-current={active ? "true" : undefined}>
+                  <span className="h-3 w-3 shrink-0 rounded-sm" style={{ background: zoneColor(z.crop, i) }} />
+                  <span className={`font-medium ${active ? "text-brand" : "text-ink"}`}>{z.name}</span>
+                  {active && <span className="rounded-full bg-brand/10 px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wide text-brand">active</span>}
+                  <span className="rounded-full bg-soil-soft/50 px-2 py-0.5 font-mono text-[11px] text-soil-deep">{z.crop}</span>
+                  <span className="font-mono text-[11px] text-muted">
+                    {z.boundary ? `${z.area_acres?.toFixed(1) ?? "—"} ac` : "no geometry — still runs its window"}
+                  </span>
+                  <button type="button" onClick={(e) => { e.stopPropagation(); removeZone(z); }} aria-label={`Remove ${z.name}`}
+                    className="ml-auto rounded-md p-1 text-muted transition-colors hover:bg-status-now/10 hover:text-status-now">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
         <p className="mt-3 font-mono text-[11px] leading-relaxed text-ink/40">

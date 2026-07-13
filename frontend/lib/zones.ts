@@ -102,9 +102,29 @@ export async function deleteZone(fieldId: string, zoneId: string): Promise<Field
   );
 }
 
-// Reloadable view of the farm fields (for the zone-drawing UI).
-export function useFarmFields() {
+// The active zone lives in the URL as ?zone=<zone_id> (shareable + carried across
+// tabs by TabNav). ?crop= is kept as a legacy alias.
+export function readZoneParam(): string | null {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("zone");
+}
+
+/**
+ * The active zone — the drill-in target that drives the per-zone requirement
+ * window and the zone-info panel. Resolution order:
+ *   1. ?zone=<zone_id>  (map click / zone selector — precise, disambiguates
+ *      same-crop zones)
+ *   2. ?crop=<crop>     (legacy alias — first zone of that crop)
+ *   3. the field's first zone (sensible default — never a blank state)
+ *
+ * `setActiveZone(zoneId)` writes ?zone= AND syncs ?crop= to that zone's crop, so
+ * the existing crop-based consumers (growth stage, field-health engine context)
+ * follow. Both map clicks and the dropdown call it, so they stay in sync.
+ */
+export function useActiveZone() {
+  const { crop } = useCrop();
   const [data, setData] = useState<FieldsResponse | null>(null);
+  const [zoneParam, setZoneParam] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -123,30 +143,14 @@ export function useFarmFields() {
     reload();
   }, [reload]);
 
-  const field = data?.fields.find((f) => f.id === data.active_field_id) ?? data?.fields[0] ?? null;
-  return { field, zones: field?.zones ?? [], loading, error, reload };
-}
-
-/**
- * Resolve the active zone from the URL crop + the fields list. The crop param
- * (corn|sorghum) maps 1:1 to a zone of the active field today; this keeps the
- * shareable ?crop= URL while making everything genuinely zone-driven (the risk
- * panel and the per-zone window key off `zone.id`).
- */
-export function useActiveZone() {
-  const { crop } = useCrop();
-  const [data, setData] = useState<FieldsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
-    let on = true;
-    getFields()
-      .then((d) => on && setData(d))
-      .catch((e) => on && setError(e?.message ?? "Failed to load fields"))
-      .finally(() => on && setLoading(false));
+    const sync = () => setZoneParam(readZoneParam());
+    sync();
+    window.addEventListener("popstate", sync);
+    window.addEventListener("zonechange", sync);
     return () => {
-      on = false;
+      window.removeEventListener("popstate", sync);
+      window.removeEventListener("zonechange", sync);
     };
   }, []);
 
@@ -154,7 +158,23 @@ export function useActiveZone() {
     data?.fields.find((f) => f.id === data.active_field_id) ?? data?.fields[0] ?? null;
   const zones = field?.zones ?? [];
   const zone =
-    zones.find((z) => z.crop.toLowerCase() === crop.toLowerCase()) ?? zones[0] ?? null;
+    zones.find((z) => z.id === zoneParam) ?? // 1. precise zone id
+    zones.find((z) => z.crop.toLowerCase() === crop.toLowerCase()) ?? // 2. crop alias
+    zones[0] ?? // 3. default: first zone
+    null;
 
-  return { zone, zones, field, crop, loading, error };
+  const setActiveZone = useCallback(
+    (zoneId: string) => {
+      const z = (data?.fields.flatMap((f) => f.zones) ?? []).find((x) => x.id === zoneId);
+      const url = new URL(window.location.href);
+      url.searchParams.set("zone", zoneId);
+      if (z) url.searchParams.set("crop", z.crop); // keep the legacy alias in sync
+      window.history.replaceState(window.history.state, "", url.toString());
+      window.dispatchEvent(new Event("zonechange"));
+      if (z) window.dispatchEvent(new Event("cropchange")); // wake crop-based consumers
+    },
+    [data]
+  );
+
+  return { zone, zones, field, crop, loading, error, setActiveZone, reload };
 }

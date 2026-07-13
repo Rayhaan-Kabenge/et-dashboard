@@ -120,9 +120,13 @@ export default function MeterOverlay() {
           <div>
             <h3 className="flex items-center gap-2 text-lg font-semibold text-ink">
               <Gauge className="h-4 w-4 text-water" /> Field pumping vs recommended
+              <span className="rounded-full bg-water/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-water">
+                field · all zones
+              </span>
             </h3>
             <p className="text-sm text-ink/50">
-              One field meter (all zones) vs the summed per-zone recommendation — a field-level “tracking the plan?” check.
+              One field meter (whole field) vs the summed per-zone recommendation — a field-level “tracking the plan?” check.
+              <span className="text-ink/40"> Independent of the zone you drill into above.</span>
             </p>
           </div>
         </div>

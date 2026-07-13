@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 import { Sprout, Satellite } from "lucide-react";
 import { FIELD_HEALTH_ENABLED } from "@/lib/features";
 import { useCrop, DEFAULT_CROP } from "@/lib/crop";
-import CropToggle from "@/components/CropToggle";
+import { readZoneParam } from "@/lib/zones";
+import ZoneSelector from "@/components/ZoneSelector";
 
 const TABS = [
   { href: "/", label: "Irrigation", Icon: Sprout },
@@ -17,8 +18,16 @@ export default function TabNav() {
   const { crop } = useCrop();
   if (!FIELD_HEALTH_ENABLED) return null;
 
-  // carry the active crop across tab switches so both tabs stay in sync
-  const withCrop = (href: string) => (crop && crop !== DEFAULT_CROP ? `${href}?crop=${crop}` : href);
+  // carry the active zone (and legacy crop alias) across tab switches so both
+  // tabs stay on the same drill-in. Re-reads on cropchange (setActiveZone fires it).
+  const withSel = (href: string) => {
+    const p = new URLSearchParams();
+    const zone = readZoneParam();
+    if (zone) p.set("zone", zone);
+    if (crop && crop !== DEFAULT_CROP) p.set("crop", crop);
+    const qs = p.toString();
+    return qs ? `${href}?${qs}` : href;
+  };
 
   return (
     <div className="border-b border-hairline bg-card">
@@ -29,7 +38,7 @@ export default function TabNav() {
             return (
               <Link
                 key={t.href}
-                href={withCrop(t.href)}
+                href={withSel(t.href)}
                 aria-current={active ? "page" : undefined}
                 className={`-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
                   active
@@ -43,7 +52,7 @@ export default function TabNav() {
             );
           })}
         </div>
-        <CropToggle />
+        <ZoneSelector />
       </nav>
     </div>
   );
