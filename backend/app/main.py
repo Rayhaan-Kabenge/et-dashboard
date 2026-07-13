@@ -14,6 +14,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import schemas
 from .compute import build_state
 from .config import available_crops, get_settings, resolve_crop
+from .farm import store as farm_store
+from .farm.api import router as farm_router
+from .farm.resolve import resolve_sheet
 from .sheets import SheetValidationError, make_source
 
 app = FastAPI(
@@ -55,11 +58,15 @@ def crops():
 
 @app.get("/api/state", response_model=schemas.StateResponse)
 def state(refresh: int = Query(0, description="set 1 to bypass cache"),
-          crop: Optional[str] = Query(None, description="crop key (corn|sorghum); default corn")):
-    # Resolve crop → sheet id via the allow-list. The default crop reuses the
-    # process settings verbatim (byte-identical to the pre-toggle behavior);
-    # any other crop gets a per-request Settings with that sheet id.
-    sheet_id = resolve_crop(crop, settings)
+          crop: Optional[str] = Query(None, description="crop key (corn|sorghum) — alias for the matching zone"),
+          zone_id: Optional[str] = Query(None, description="zone id whose sheet drives this run (primary selector)"),
+          field_id: Optional[str] = Query(None, description="optional field scope for the crop/zone lookup")):
+    # Resolve the run selection → sheet id via the Field→Zone model (zone_id is
+    # primary; ?crop= is a backwards-compatible alias for the matching zone).
+    # This only chooses WHICH sheet feeds the engine — build_state is unchanged.
+    # The default selection reuses the process settings verbatim (byte-identical
+    # to the pre-refactor behavior); any other sheet gets a per-request copy.
+    sheet_id = resolve_sheet(zone_id=zone_id, crop=crop, field_id=field_id, settings=settings)
     use_settings = settings if sheet_id == resolve_crop(None, settings) \
         else settings.model_copy(update={"sheet_id": sheet_id})
     key = _cache_key(sheet_id)
@@ -79,6 +86,14 @@ def state(refresh: int = Query(0, description="set 1 to bypass cache"),
         raise HTTPException(status_code=500, detail=f"failed to build state: {exc}")
     _CACHE[key] = (now, payload)
     return payload
+
+
+# --- Field→Zone model (engine-side run selection) ---------------------------
+# Always mounted. Seed the store (one field, corn+sorghum zones) at startup so
+# the migration is in place before the first request; ensure_seeded is a no-op
+# once fields exist.
+app.include_router(farm_router)
+farm_store.ensure_seeded(settings)
 
 
 @app.post("/api/validate-sheet", response_model=schemas.ValidateResponse)
