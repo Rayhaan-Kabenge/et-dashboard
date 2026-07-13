@@ -176,5 +176,15 @@ export function useActiveZone() {
     [data]
   );
 
+  // Self-heal a stale ?zone= that points at a zone that no longer exists (e.g. a
+  // shared/bookmarked link to a since-deleted zone). The view already falls back
+  // via the resolution order above; this rewrites the URL to the resolved zone so
+  // it never lingers on a deleted zone_id.
+  useEffect(() => {
+    if (zoneParam && zones.length > 0 && !zones.some((z) => z.id === zoneParam) && zone) {
+      setActiveZone(zone.id);
+    }
+  }, [zoneParam, zones, zone, setActiveZone]);
+
   return { zone, zones, field, crop, loading, error, setActiveZone, reload };
 }
