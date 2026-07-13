@@ -90,6 +90,7 @@ export default function ZonesMap() {
   const [crops, setCrops] = useState<CropOption[]>([{ id: "corn", label: "Corn" }]);
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [confirmId, setConfirmId] = useState<string | null>(null); // zone pending delete-confirm
   const fileRef = useRef<HTMLInputElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
 
@@ -165,8 +166,11 @@ export default function ZonesMap() {
 
   async function removeZone(z: Zone) {
     setErr(null);
+    setConfirmId(null);
     try {
-      await deleteZone(field!.id, z.id);
+      const updated = await deleteZone(field!.id, z.id);
+      // if we just removed the active zone, drill into a remaining one
+      if (z.id === activeZone?.id && updated.zones[0]) setActiveZone(updated.zones[0].id);
       await reload();
     } catch (e: any) {
       setErr(e.message.includes("at least one") ? "A field must keep at least one zone." : e.message);
@@ -303,10 +307,24 @@ export default function ZonesMap() {
                   <span className="font-mono text-[11px] text-muted">
                     {z.boundary ? `${z.area_acres?.toFixed(1) ?? "—"} ac` : "no geometry — still runs its window"}
                   </span>
-                  <button type="button" onClick={(e) => { e.stopPropagation(); removeZone(z); }} aria-label={`Remove ${z.name}`}
-                    className="ml-auto rounded-md p-1 text-muted transition-colors hover:bg-status-now/10 hover:text-status-now">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  {confirmId === z.id ? (
+                    <span className="ml-auto flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      <span className="font-mono text-[11px] text-status-now">Remove?</span>
+                      <button type="button" onClick={() => removeZone(z)}
+                        className="rounded-md bg-status-now/10 px-2 py-0.5 font-mono text-[11px] font-medium text-status-now hover:bg-status-now/20">
+                        Yes
+                      </button>
+                      <button type="button" onClick={() => setConfirmId(null)}
+                        className="rounded-md px-2 py-0.5 font-mono text-[11px] text-muted hover:text-ink">
+                        No
+                      </button>
+                    </span>
+                  ) : (
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setErr(null); setConfirmId(z.id); }} aria-label={`Remove ${z.name}`}
+                      className="ml-auto rounded-md p-1 text-muted transition-colors hover:bg-status-now/10 hover:text-status-now">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </li>
               );
             })}

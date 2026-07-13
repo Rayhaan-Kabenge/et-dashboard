@@ -32,7 +32,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins or ["*"],
     allow_credentials=False,
-    allow_methods=["GET", "POST"],
+    # The farm API uses PUT (field boundary / zone edit / meter) and DELETE
+    # (remove a zone) in addition to GET/POST. Without these, the browser's CORS
+    # preflight rejects those cross-origin calls ("failed to fetch").
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
 
