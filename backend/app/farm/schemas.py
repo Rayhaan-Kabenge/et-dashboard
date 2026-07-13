@@ -12,26 +12,29 @@ from pydantic import BaseModel, Field as PydField
 
 
 class Zone(BaseModel):
-    """One crop zone within a Field. Carries its own crop + the Google Sheet that
-    drives THIS zone's engine run. Boundaries/area are optional in this slice
-    (drawn later); `season_year` makes the model multi-year-ready."""
+    """A named MANAGEMENT UNIT within a Field — identity is name+boundary, NOT the
+    crop. Carries its own crop + the Google Sheet that drives its engine run.
+    Two zones may share a crop and still be distinct (different name/boundary).
+    `boundary`/`area_acres` are OPTIONAL: a zone with no drawn polygon still runs
+    its window (geometry is additive). `season_year` makes it multi-year-ready."""
     id: str
-    name: str
+    name: str                                   # user label — "Corn block", "North half"
     crop: str                                   # "corn" | "sorghum" | ...
     sheet_id: str                               # drives this zone's engine run
     season_year: Optional[int] = None
-    boundary: Optional[dict[str, Any]] = None   # GeoJSON (optional this slice)
-    area_acres: Optional[float] = None
+    boundary: Optional[dict[str, Any]] = None   # GeoJSON polygon drawn within the field
+    area_acres: Optional[float] = None          # computed from the polygon
 
 
 class Field(BaseModel):
-    """One physical field / irrigation system. ALWAYS has >= 1 zone: a single-crop
-    field is exactly one zone (whole field), a split field has several."""
+    """One physical field / irrigation system: a whole-field `boundary` (the pivot
+    outline) and >= 1 zone. A single-crop field is one zone (whole field); a split
+    field has several. Satellite (NDRE/SI) is field-level on `boundary` for now."""
     id: str
     name: str
-    boundary: Optional[dict[str, Any]] = None   # GeoJSON (optional this slice)
-    area_acres: Optional[float] = None
-    meter: Optional[dict[str, Any]] = None      # on the model, unused this slice
+    boundary: Optional[dict[str, Any]] = None   # GeoJSON polygon — the field outline
+    area_acres: Optional[float] = None          # computed from the polygon
+    meter: Optional[dict[str, Any]] = None      # field-level flow meter (Slice 3)
     zones: list[Zone] = PydField(min_length=1)
 
 
@@ -55,6 +58,30 @@ class FieldCreate(BaseModel):
 class FieldsResponse(BaseModel):
     active_field_id: Optional[str] = None
     fields: list[Field] = []
+
+
+# --- drawing / geometry wiring (Slice 4a) ----------------------------------- #
+class BoundaryUpdate(BaseModel):
+    """Set/replace the field's whole-outline boundary (drawn or uploaded GeoJSON)."""
+    geometry: dict[str, Any]
+
+
+class ZoneDraw(BaseModel):
+    """Create a management zone from the map: a user name + a crop (→ sheet_id via
+    the registry) + an optional drawn polygon. sheet_id/area are resolved server-
+    side; boundary is optional so a zone can exist before it's drawn."""
+    name: str
+    crop: str
+    boundary: Optional[dict[str, Any]] = None
+    sheet_id: Optional[str] = None              # override; else resolved from crop
+
+
+class ZonePatch(BaseModel):
+    """Partial update of a zone — rename, re-crop (re-resolves sheet_id), or
+    (re)draw its boundary. Any omitted field is left unchanged."""
+    name: Optional[str] = None
+    crop: Optional[str] = None
+    boundary: Optional[dict[str, Any]] = None
 
 
 class MeterReading(BaseModel):

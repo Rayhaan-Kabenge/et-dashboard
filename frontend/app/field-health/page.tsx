@@ -54,10 +54,17 @@ function useEt(fieldId: string | undefined, range: { start: string; end: string 
   return { et, loading };
 }
 
-// Leaflet needs the browser — load the map client-side only.
+// Leaflet needs the browser — load the maps client-side only.
 const FieldMap = dynamic(() => import("@/components/field/FieldMap"), {
   ssr: false,
   loading: () => <Skeleton className="h-[440px] w-full rounded-xl2" />,
+});
+// The unified engine field/zone drawing surface (Slice 4a). Separate from the
+// satellite FieldMap above — zones drawn here are the engine zones that drive
+// the irrigation windows.
+const ZonesMap = dynamic(() => import("@/components/field/ZonesMap"), {
+  ssr: false,
+  loading: () => <Skeleton className="h-[520px] w-full rounded-xl2" />,
 });
 
 export default function FieldHealthPage() {
@@ -136,6 +143,10 @@ function Body() {
             : null
         }
       />
+
+      {/* Unified engine field + zones (drawn boundaries wire onto the zones that
+          drive the irrigation windows). Independent of the satellite field above. */}
+      <ZonesMap />
 
       {loading ? (
         <Skeleton className="h-20 w-full rounded-xl2" />

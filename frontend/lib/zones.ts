@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { API_BASE } from "@/lib/api";
 import { useCrop } from "@/lib/crop";
 
@@ -36,6 +36,95 @@ export async function getFields(): Promise<FieldsResponse> {
   const res = await fetch(`${API_BASE}/api/fields`, { cache: "no-store" });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
+}
+
+// GeoJSON polygon (matches the field-health drawing output).
+export interface GeoPolygon {
+  type: "Polygon";
+  coordinates: number[][][];
+}
+
+async function asFieldJson(res: Response): Promise<Field> {
+  if (!res.ok) {
+    let detail = `${res.status} ${res.statusText}`;
+    try {
+      const b = await res.json();
+      if (b?.detail) detail = typeof b.detail === "string" ? b.detail : JSON.stringify(b.detail);
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail);
+  }
+  return res.json();
+}
+
+// --- Slice 4a: drawn boundaries wire onto the engine zones -------------------
+export async function setFieldBoundary(fieldId: string, geometry: GeoPolygon): Promise<Field> {
+  return asFieldJson(
+    await fetch(`${API_BASE}/api/fields/${fieldId}/boundary`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ geometry }),
+    })
+  );
+}
+
+export async function addZone(
+  fieldId: string,
+  body: { name: string; crop: string; boundary?: GeoPolygon | null }
+): Promise<Field> {
+  return asFieldJson(
+    await fetch(`${API_BASE}/api/fields/${fieldId}/zones`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+  );
+}
+
+export async function updateZone(
+  fieldId: string,
+  zoneId: string,
+  patch: { name?: string; crop?: string; boundary?: GeoPolygon | null }
+): Promise<Field> {
+  return asFieldJson(
+    await fetch(`${API_BASE}/api/fields/${fieldId}/zones/${zoneId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    })
+  );
+}
+
+export async function deleteZone(fieldId: string, zoneId: string): Promise<Field> {
+  return asFieldJson(
+    await fetch(`${API_BASE}/api/fields/${fieldId}/zones/${zoneId}`, { method: "DELETE" })
+  );
+}
+
+// Reloadable view of the farm fields (for the zone-drawing UI).
+export function useFarmFields() {
+  const [data, setData] = useState<FieldsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
+    try {
+      setData(await getFields());
+      setError(null);
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to load fields");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  const field = data?.fields.find((f) => f.id === data.active_field_id) ?? data?.fields[0] ?? null;
+  return { field, zones: field?.zones ?? [], loading, error, reload };
 }
 
 /**

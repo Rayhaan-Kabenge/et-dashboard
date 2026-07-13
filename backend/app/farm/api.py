@@ -5,9 +5,12 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from ..config import get_settings
+from ..config import get_settings, resolve_crop
+from ..field.geometry import validate_polygon
 from . import meter as meter_svc, risk as risk_svc, store
-from .schemas import Field, FieldMeter, FieldsResponse, MeterResponse, RiskResponse
+from .schemas import (
+    BoundaryUpdate, Field, FieldMeter, FieldsResponse, MeterResponse, RiskResponse,
+    ZoneDraw, ZonePatch)
 
 router = APIRouter(prefix="/api", tags=["farm"])
 
@@ -35,6 +38,63 @@ def activate_field(field_id: str):
     field = store.set_active_field(field_id)
     if field is None:
         raise HTTPException(status_code=404, detail="field not found")
+    return field
+
+
+@router.put("/fields/{field_id}/boundary", response_model=Field)
+def set_field_boundary(field_id: str, body: BoundaryUpdate):
+    """Set/replace the field's whole-outline boundary (drawn or uploaded). Recomputes
+    the field acreage. Satellite (NDRE/SI) stays field-level on this boundary."""
+    err = validate_polygon(body.geometry)
+    if err:
+        raise HTTPException(status_code=422, detail=f"invalid field geometry: {err}")
+    field = store.set_field_boundary(field_id, body.geometry)
+    if field is None:
+        raise HTTPException(status_code=404, detail="field not found")
+    return field
+
+
+@router.post("/fields/{field_id}/zones", response_model=Field)
+def add_zone(field_id: str, body: ZoneDraw):
+    """Add a management zone drawn on the map: a user name + a crop (→ sheet_id via
+    the registry) + an optional polygon. Two zones may share a crop — identity is
+    name+boundary. Area is computed from the polygon."""
+    if body.boundary is not None:
+        err = validate_polygon(body.boundary)
+        if err:
+            raise HTTPException(status_code=422, detail=f"invalid zone geometry: {err}")
+    sheet_id = body.sheet_id or resolve_crop(body.crop, get_settings())
+    field = store.add_zone(field_id, name=body.name, crop=body.crop.strip().lower(),
+                           sheet_id=sheet_id, boundary=body.boundary)
+    if field is None:
+        raise HTTPException(status_code=404, detail="field not found")
+    return field
+
+
+@router.put("/fields/{field_id}/zones/{zone_id}", response_model=Field)
+def update_zone(field_id: str, zone_id: str, body: ZonePatch):
+    """Rename, re-crop (re-resolves sheet_id), or (re)draw a zone's boundary."""
+    if body.boundary is not None:
+        err = validate_polygon(body.boundary)
+        if err:
+            raise HTTPException(status_code=422, detail=f"invalid zone geometry: {err}")
+    sheet_id = resolve_crop(body.crop, get_settings()) if body.crop else None
+    field = store.update_zone(field_id, zone_id, name=body.name,
+                              crop=body.crop.strip().lower() if body.crop else None,
+                              sheet_id=sheet_id, boundary=body.boundary)
+    if field is None:
+        raise HTTPException(status_code=404, detail="field or zone not found")
+    return field
+
+
+@router.delete("/fields/{field_id}/zones/{zone_id}", response_model=Field)
+def delete_zone(field_id: str, zone_id: str):
+    """Delete a zone. A Field always keeps >= 1 zone, so the last one can't go."""
+    field, status = store.delete_zone(field_id, zone_id)
+    if status == "not_found":
+        raise HTTPException(status_code=404, detail="field or zone not found")
+    if status == "last":
+        raise HTTPException(status_code=409, detail="a field must keep at least one zone")
     return field
 
 
