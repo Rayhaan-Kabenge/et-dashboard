@@ -10,6 +10,7 @@ import RootZoneMeter from "@/components/RootZoneMeter";
 import RecommendationPanel from "@/components/RecommendationPanel";
 import WeatherBar from "@/components/WeatherBar";
 import DepletionChart from "@/components/DepletionChart";
+import MeterOverlay from "@/components/MeterOverlay";
 import GrowthStageCard from "@/components/GrowthStageCard";
 import RecordsPanel from "@/components/RecordsPanel";
 import SensorPane from "@/components/SensorPane";
@@ -120,6 +121,10 @@ export default function Page() {
           `zone` (from useActiveZone) is still used to drive the per-zone
           requirement window (Part A). Re-mount a risk panel here when ready.
         */}
+
+        {/* Field-level pumping meter (all zones) — optional + additive; the
+            per-zone windows above do not depend on it. */}
+        <MeterOverlay />
 
         <RecordsPanel state={state} />
         <SensorPane />

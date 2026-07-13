@@ -57,6 +57,44 @@ class FieldsResponse(BaseModel):
     fields: list[Field] = []
 
 
+class MeterReading(BaseModel):
+    """One cumulative (odometer-style) flow-meter reading for the whole field."""
+    date: str                                   # ISO date the reading was taken
+    meter_reading: float                        # cumulative meter value at that date
+    unit: str = "gallons"                       # gallons | acre-inches | acre-feet | m3
+
+
+class FieldMeter(BaseModel):
+    """The field's ONE flow meter (field-level, across all zones). Optional — the
+    recommendation works fully without it. First reading = season baseline."""
+    readings: list[MeterReading] = []
+    area_basis: str = "field"                   # "field" (field acreage) | "manual"
+    area_override: Optional[float] = None       # acres, when area_basis == "manual"
+
+
+class MeterPoint(BaseModel):
+    date: str
+    meter_reading: float
+    unit: str
+    increment_in: float                         # pumped depth added since previous reading
+    cumulative_pumped_in: float
+    cumulative_pumped_mm: float
+
+
+class MeterResponse(BaseModel):
+    """Cumulative pumped-depth series derived from the field meter log. Compared on
+    the frontend against the summed per-zone recommended total. Engine untouched."""
+    field_id: str
+    readings: list[MeterReading] = []
+    area_acres: float                           # acreage actually used in the conversion
+    area_basis: str                             # "field" | "manual"
+    area_override: Optional[float] = None
+    points: list[MeterPoint] = []
+    total_pumped_in: float = 0.0
+    total_pumped_mm: float = 0.0
+    note: Optional[str] = None
+
+
 class RiskResponse(BaseModel):
     """Pre-computed Bayesian risk posteriors for a zone's crop (read-only assembly).
 

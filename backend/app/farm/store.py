@@ -172,3 +172,26 @@ def create_field(name: str, zones: list[ZoneCreate], *, boundary: Optional[dict]
             data["active_field_id"] = field.id
         _save_raw(data)
     return field
+
+
+# --------------------------------------------------------------------------- #
+# field meter (optional, field-level — additive; never affects zone selection)
+# --------------------------------------------------------------------------- #
+def get_meter(field_id: str) -> Optional[dict]:
+    """The field's flow-meter log (readings + area basis). Returns an empty meter
+    for a known field with none yet, or None if the field doesn't exist."""
+    raw = _load_raw()["fields"].get(field_id)
+    if raw is None:
+        return None
+    return raw.get("meter") or {"readings": [], "area_basis": "field", "area_override": None}
+
+
+def set_meter(field_id: str, meter: dict) -> bool:
+    """Persist the meter on the Field object. Returns False if the field is absent."""
+    with _lock:
+        data = _load_raw()
+        if field_id not in data["fields"]:
+            return False
+        data["fields"][field_id]["meter"] = meter
+        _save_raw(data)
+        return True

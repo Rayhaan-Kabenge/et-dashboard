@@ -6,8 +6,8 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from ..config import get_settings
-from . import risk as risk_svc, store
-from .schemas import Field, FieldsResponse, RiskResponse
+from . import meter as meter_svc, risk as risk_svc, store
+from .schemas import Field, FieldMeter, FieldsResponse, MeterResponse, RiskResponse
 
 router = APIRouter(prefix="/api", tags=["farm"])
 
@@ -36,6 +36,28 @@ def activate_field(field_id: str):
     if field is None:
         raise HTTPException(status_code=404, detail="field not found")
     return field
+
+
+@router.get("/fields/{field_id}/meter", response_model=MeterResponse)
+def get_meter(field_id: str):
+    """The field's flow-meter log, converted to a cumulative pumped-depth series.
+    Empty (no readings) until the grower logs some. Field-level + read-only —
+    never affects the per-zone windows or zone selection."""
+    field = store.get_field(field_id)
+    if field is None:
+        raise HTTPException(status_code=404, detail="field not found")
+    return meter_svc.compute(field, FieldMeter(**(store.get_meter(field_id) or {})))
+
+
+@router.put("/fields/{field_id}/meter", response_model=MeterResponse)
+def put_meter(field_id: str, body: FieldMeter):
+    """Replace the field's meter log (readings + area basis/override). Stored on
+    the Field object. Returns the recomputed cumulative pumped-depth series."""
+    field = store.get_field(field_id)
+    if field is None:
+        raise HTTPException(status_code=404, detail="field not found")
+    store.set_meter(field_id, body.model_dump())
+    return meter_svc.compute(field, body)
 
 
 @router.get("/risk", response_model=RiskResponse)
