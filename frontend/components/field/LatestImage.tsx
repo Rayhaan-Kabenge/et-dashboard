@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Image as ImageIcon, CloudOff, Maximize2, X } from "lucide-react";
-import { useField } from "@/lib/field/context";
-import { getImage } from "@/lib/field/api";
+import { getZoneImage } from "@/lib/field/api";
+import { useSatelliteTarget } from "@/lib/zones";
 import type { FieldImage } from "@/lib/field/types";
 import CollapsibleCard from "./CollapsibleCard";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,7 +14,7 @@ export default function LatestImage({
   // undefined = range not known yet (wait); null = fall back to overall most-recent
   range?: { start: string; end: string } | null;
 }) {
-  const { field } = useField();
+  const { target } = useSatelliteTarget();
   const [index, setIndex] = useState<"NDRE" | "NDVI">("NDRE");
   const [img, setImg] = useState<FieldImage | null>(null);
   const [loading, setLoading] = useState(true);
@@ -22,25 +22,25 @@ export default function LatestImage({
   const [zoom, setZoom] = useState(false);
 
   useEffect(() => {
-    if (!field || range === undefined) return; // wait until the timeline reports its range
+    if (!target || range === undefined) return; // wait until the timeline reports its range
     let cancelled = false;
     setLoading(true);
-    getImage(field.id, index, range)
+    getZoneImage(target.id, index, range)
       .then((d) => !cancelled && (setImg(d), setError(null)))
       .catch((e) => !cancelled && setError(e.message))
       .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;
     };
-  }, [field, index, range?.start, range?.end, range]);
+  }, [target?.id, index, range?.start, range?.end, range]);
 
   const src = img?.png_base64 ? `data:image/png;base64,${img.png_base64}` : null;
   const note = img?.note ?? error ?? null;
 
   return (
     <CollapsibleCard
-      title="Latest image"
-      subtitle={`Colorized ${index} · ${range ? "most recent cloud-free in range" : "least-cloud scene"}`}
+      title={`Latest image${target ? ` · ${target.name}` : ""}`}
+      subtitle={`Colorized ${index} · this zone · ${range ? "most recent cloud-free in range" : "least-cloud scene"}`}
       icon={ImageIcon}
       right={
         <div className="inline-flex rounded-full border border-hairline p-0.5 text-xs">

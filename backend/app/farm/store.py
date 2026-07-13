@@ -189,6 +189,16 @@ def get_zone(zone_id: str, field_id: Optional[str] = None) -> Optional[Zone]:
     return None
 
 
+def get_field_of_zone(zone_id: str) -> Optional[Field]:
+    """The Field that contains a given zone (used to fall back to the field
+    boundary for zone-level satellite when a zone has no drawn boundary yet)."""
+    data = _load_raw()
+    for f in data["fields"].values():
+        if any(z.get("id") == zone_id for z in f.get("zones", [])):
+            return Field(**f)
+    return None
+
+
 def find_zone_by_crop(crop: str, field_id: Optional[str] = None) -> Optional[Zone]:
     key = (crop or "").strip().lower()
     if not key:

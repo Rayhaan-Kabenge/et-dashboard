@@ -192,3 +192,22 @@ export function useActiveZone() {
 
   return { zone, zones, field, crop, loading, error, setActiveZone, reload };
 }
+
+// What the field-health satellite panels analyze: the ACTIVE zone. Its id keys
+// the zone-scoped satellite endpoints (/api/field/zone/{id}/…) and the per-zone
+// cache; `name` labels the panels; `hasBoundary` is false when the zone isn't
+// drawn yet (the backend falls back to the field boundary + a note).
+export interface SatelliteTarget {
+  id: string;
+  name: string;
+  crop: string;
+  hasBoundary: boolean;
+}
+
+export function useSatelliteTarget(): { target: SatelliteTarget | null; loading: boolean } {
+  const { zone, loading } = useActiveZone();
+  const target = zone
+    ? { id: zone.id, name: zone.name, crop: zone.crop, hasBoundary: !!zone.boundary }
+    : null;
+  return { target, loading };
+}

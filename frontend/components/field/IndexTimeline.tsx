@@ -5,8 +5,8 @@ import {
   ComposedChart, Area, Line, XAxis, YAxis, Tooltip, ReferenceLine, ResponsiveContainer,
 } from "recharts";
 import { Activity, CloudOff, LineChart as LineIcon } from "lucide-react";
-import { useField } from "@/lib/field/context";
-import { getIndices } from "@/lib/field/api";
+import { getZoneIndices } from "@/lib/field/api";
+import { useSatelliteTarget } from "@/lib/zones";
 import type { IndexSeries } from "@/lib/field/types";
 import CollapsibleCard from "./CollapsibleCard";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,7 +26,7 @@ export default function IndexTimeline({
   stages: StageMarker[];
   onRangeChange?: (range: { start: string; end: string }) => void;
 }) {
-  const { field } = useField();
+  const { target } = useSatelliteTarget();
   const [index, setIndex] = useState<"NDRE" | "NDVI">("NDRE");
   const [preset, setPreset] = useState<Preset>("season");
   const seasonStart = stages[0]?.date ?? iso(new Date(new Date().getFullYear(), 0, 1));
@@ -50,17 +50,17 @@ export default function IndexTimeline({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!field) return;
+    if (!target) return;
     let cancelled = false;
     setLoading(true);
-    getIndices(field.id, index, start, end)
+    getZoneIndices(target.id, index, start, end)
       .then((s) => !cancelled && (setSeries(s), setError(null)))
       .catch((e) => !cancelled && setError(e.message))
       .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;
     };
-  }, [field, index, start, end]);
+  }, [target?.id, index, start, end]);
 
   // report the selected range up so sibling panels (e.g. Latest image) can follow it
   useEffect(() => {
@@ -92,8 +92,8 @@ export default function IndexTimeline({
 
   return (
     <CollapsibleCard
-      title="Index timeline"
-      subtitle="Within-field mean ± 1σ · Sentinel-2"
+      title={`Index timeline${target ? ` · ${target.name}` : ""}`}
+      subtitle="Within-zone mean ± 1σ · Sentinel-2 · this zone"
       icon={LineIcon}
       right={
         <div className="flex items-center gap-2">

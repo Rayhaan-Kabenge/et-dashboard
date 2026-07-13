@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Grid3x3, CloudOff, Download, Info, Sparkles, RefreshCw } from "lucide-react";
-import { useField } from "@/lib/field/context";
+import { useSatelliteTarget } from "@/lib/zones";
 import {
-  getSufficiency, postSiSummary, sufficiencyExportUrl,
+  getZoneSufficiency, postZoneSiSummary, zoneSufficiencyExportUrl,
   type SiSummaryResult, type SufficiencyResponse,
 } from "@/lib/field/api";
 import CollapsibleCard from "./CollapsibleCard";
@@ -28,17 +28,18 @@ export default function SufficiencyMap({
   range: Range;
   engineContext?: EngineContext;
 }) {
-  const { field } = useField();
+  const { target } = useSatelliteTarget();
   const [res, setRes] = useState<SufficiencyResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [threshold, setThreshold] = useState(DEFAULT_THRESHOLD);
 
   useEffect(() => {
-    if (!field || range === undefined) return;
+    if (!target || range === undefined) return;
     let cancelled = false;
     setLoading(true);
-    // threshold changes recompute client-side from the histogram — one fetch per field+range
-    getSufficiency(field.id, range, DEFAULT_THRESHOLD)
+    // threshold changes recompute client-side from the histogram — one fetch per zone+range.
+    // The 95th-pct reference + bare-soil mask are computed over THIS zone's pixels.
+    getZoneSufficiency(target.id, range, DEFAULT_THRESHOLD)
       .then((d) => !cancelled && setRes(d))
       .catch(() => !cancelled && setRes({ status: "unavailable", index: "NDRE", note: "Sufficiency map unavailable right now." }))
       .finally(() => !cancelled && setLoading(false));
@@ -46,7 +47,7 @@ export default function SufficiencyMap({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [field?.id, range?.start, range?.end]);
+  }, [target?.id, range?.start, range?.end]);
 
   // spatial AI summary — re-summarizes when the field, scene/range, or threshold
   // changes (threshold debounced so slider drags don't spam the endpoint)
@@ -54,10 +55,10 @@ export default function SufficiencyMap({
   const [sumLoading, setSumLoading] = useState(false);
 
   async function runSummary(force = false) {
-    if (!field || range === undefined || res?.status !== "ok") return;
+    if (!target || range === undefined || res?.status !== "ok") return;
     setSumLoading(true);
     try {
-      setSum(await postSiSummary(field.id, { range, threshold, engine_context: engineContext ?? {} }, force));
+      setSum(await postZoneSiSummary(target.id, { range, threshold, engine_context: engineContext ?? {} }, force));
     } catch {
       setSum({ status: "error", message: "Summary unavailable right now." });
     } finally {
@@ -66,11 +67,11 @@ export default function SufficiencyMap({
   }
 
   useEffect(() => {
-    if (!field || range === undefined || res?.status !== "ok") return;
+    if (!target || range === undefined || res?.status !== "ok") return;
     const t = window.setTimeout(() => runSummary(false), 700); // debounce slider drags
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [field?.id, range?.start, range?.end, threshold, res?.scene_date, res?.status]);
+  }, [target?.id, range?.start, range?.end, threshold, res?.scene_date, res?.status]);
 
   // % of field below the (adjustable) threshold, from the 0.01-wide SI histogram.
   // Compare INTEGER bin indices — (i+1)*0.01 <= t breaks on float artifacts
@@ -87,12 +88,12 @@ export default function SufficiencyMap({
     return (below / total) * 100;
   }, [res, threshold]);
 
-  if (!field) return null;
+  if (!target) return null;
 
   return (
     <CollapsibleCard
-      title="Relative sufficiency (NDRE)"
-      subtitle="flags zones to investigate — not an N prescription"
+      title={`Relative sufficiency (NDRE)${target ? ` · ${target.name}` : ""}`}
+      subtitle="this zone vs its OWN reference · flags areas to investigate — not an N prescription"
       icon={Grid3x3}
       right={
         res?.status === "ok" && res.scene_date ? (
@@ -165,7 +166,7 @@ export default function SufficiencyMap({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`data:image/png;base64,${res.png_base64}`}
-                alt={`Sufficiency-index heat map for ${field.name}, scene ${res.scene_date}`}
+                alt={`Sufficiency-index heat map for ${target.name}, scene ${res.scene_date}`}
                 className="mx-auto max-h-[420px] w-auto max-w-full"
                 style={{ imageRendering: "pixelated" }}
               />
@@ -187,13 +188,13 @@ export default function SufficiencyMap({
           <div className="flex flex-wrap items-center gap-2">
             <span className="stat-label">Download zones</span>
             <Button size="sm" variant="outline" asChild>
-              <a href={sufficiencyExportUrl(field.id, range, threshold, "geojson")} download>
+              <a href={zoneSufficiencyExportUrl(target.id, range, threshold, "geojson")} download>
                 <Download className="h-3.5 w-3.5" />
                 GeoJSON
               </a>
             </Button>
             <Button size="sm" variant="outline" asChild>
-              <a href={sufficiencyExportUrl(field.id, range, threshold, "shp")} download>
+              <a href={zoneSufficiencyExportUrl(target.id, range, threshold, "shp")} download>
                 <Download className="h-3.5 w-3.5" />
                 Shapefile (.zip)
               </a>

@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import {
   LayoutDashboard, TrendingUp, TrendingDown, Minus, CloudOff, Loader2, Droplets,
 } from "lucide-react";
-import { useField } from "@/lib/field/context";
-import { getIndices } from "@/lib/field/api";
+import { getZoneIndices } from "@/lib/field/api";
+import { useSatelliteTarget } from "@/lib/zones";
 import type { IndexSeries, IndexPoint, ETResponse } from "@/lib/field/types";
 import CollapsibleCard from "./CollapsibleCard";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -104,19 +104,19 @@ export default function FieldStats({
   et: ETResponse | null;
   etLoading: boolean;
 }) {
-  const { field } = useField();
+  const { target } = useSatelliteTarget();
   const [ndre, setNdre] = useState<IndexSeries | null>(null);
   const [ndvi, setNdvi] = useState<IndexSeries | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!field || range === undefined) return;
+    if (!target || range === undefined) return;
     let cancelled = false;
     setLoading(true);
     Promise.all([
-      getIndices(field.id, "NDRE", range.start, range.end),
-      getIndices(field.id, "NDVI", range.start, range.end),
+      getZoneIndices(target.id, "NDRE", range.start, range.end),
+      getZoneIndices(target.id, "NDVI", range.start, range.end),
     ])
       .then(([a, b]) => {
         if (cancelled) return;
@@ -126,7 +126,7 @@ export default function FieldStats({
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [field?.id, range?.start, range?.end]);
+  }, [target?.id, range?.start, range?.end]);
 
   const stats = useMemo(
     () => ({ NDRE: summarize(ndre?.points ?? [], "NDRE"), NDVI: summarize(ndvi?.points ?? [], "NDVI") }),
@@ -152,8 +152,8 @@ export default function FieldStats({
 
   return (
     <CollapsibleCard
-      title="At a glance"
-      subtitle="Latest values · trend · variability · ET — selected range"
+      title={`At a glance${target ? ` · ${target.name}` : ""}`}
+      subtitle="Latest values · trend · variability · ET — this zone · selected range"
       icon={LayoutDashboard}
       right={
         range && (

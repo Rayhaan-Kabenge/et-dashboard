@@ -182,3 +182,54 @@ export function sufficiencyExportUrl(
   const q = new URLSearchParams({ start: range.start, end: range.end, threshold: String(threshold), format });
   return `${BASE}/${fieldId}/sufficiency/export?${q}`;
 }
+
+// --- zone-scoped satellite: same analysis over the active ZONE's boundary ----
+// (identical response shapes; only the path changes to /zone/{zoneId}/...)
+export async function getZoneIndices(
+  zoneId: string, index: string, start: string, end: string
+): Promise<IndexSeries> {
+  const q = new URLSearchParams({ index, start, end });
+  return asJson<IndexSeries>(await fetch(`${BASE}/zone/${zoneId}/indices?${q}`, { cache: "no-store" }));
+}
+
+export async function getZoneImage(
+  zoneId: string, index: string, range?: { start: string; end: string } | null
+): Promise<FieldImage> {
+  const q = new URLSearchParams({ index });
+  if (range) {
+    q.set("start", range.start);
+    q.set("end", range.end);
+  }
+  return asJson<FieldImage>(await fetch(`${BASE}/zone/${zoneId}/image?${q}`, { cache: "no-store" }));
+}
+
+export async function getZoneSufficiency(
+  zoneId: string, range: { start: string; end: string }, threshold: number
+): Promise<SufficiencyResponse> {
+  const q = new URLSearchParams({ start: range.start, end: range.end, threshold: String(threshold) });
+  return asJson<SufficiencyResponse>(await fetch(`${BASE}/zone/${zoneId}/sufficiency?${q}`, { cache: "no-store" }));
+}
+
+export async function postZoneSiSummary(
+  zoneId: string,
+  body: { range: { start: string; end: string }; threshold: number; engine_context: Record<string, unknown> },
+  force = false
+): Promise<SiSummaryResult> {
+  return asJson<SiSummaryResult>(
+    await fetch(`${BASE}/zone/${zoneId}/sufficiency/summary${force ? "?force=1" : ""}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+  );
+}
+
+export function zoneSufficiencyExportUrl(
+  zoneId: string,
+  range: { start: string; end: string },
+  threshold: number,
+  format: "geojson" | "shp"
+): string {
+  const q = new URLSearchParams({ start: range.start, end: range.end, threshold: String(threshold), format });
+  return `${BASE}/zone/${zoneId}/sufficiency/export?${q}`;
+}
