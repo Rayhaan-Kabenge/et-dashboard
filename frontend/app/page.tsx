@@ -10,6 +10,7 @@ import RootZoneMeter from "@/components/RootZoneMeter";
 import RecommendationPanel from "@/components/RecommendationPanel";
 import WeatherBar from "@/components/WeatherBar";
 import DepletionChart from "@/components/DepletionChart";
+import RiskPanel from "@/components/RiskPanel";
 import GrowthStageCard from "@/components/GrowthStageCard";
 import RecordsPanel from "@/components/RecordsPanel";
 import SensorPane from "@/components/SensorPane";
@@ -19,6 +20,7 @@ import { AlertTriangle, FlaskConical, RefreshCw } from "lucide-react";
 import { fmtDate } from "@/lib/format";
 import CardChevron from "@/components/CardChevron";
 import { useCrop } from "@/lib/crop";
+import { useActiveZone } from "@/lib/zones";
 
 export default function Page() {
   const [state, setState] = useState<StateResponse | null>(null);
@@ -27,12 +29,14 @@ export default function Page() {
   const [refreshing, setRefreshing] = useState(false);
   const [depOpen, setDepOpen] = useState(true);
   const { crop } = useCrop();
+  const { zone } = useActiveZone(); // the crop's zone in the active field (per-zone run + risk)
 
   const load = useCallback(async (refresh = false) => {
     try {
       refresh ? setRefreshing(true) : setLoading(true);
       setError(null);
-      const data = await fetchState(refresh, crop);
+      // zone_id drives the run (its own sheet); crop stays as the alias/fallback
+      const data = await fetchState(refresh, crop, zone?.id);
       setState(data);
     } catch (e: any) {
       setError(e?.message ?? "Failed to load dashboard");
@@ -40,10 +44,14 @@ export default function Page() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [crop]);
+  }, [crop, zone?.id]);
 
+  // Crop switch blanks to the skeleton; the zone resolving afterwards (same crop)
+  // just refetches the identical cached run without a second skeleton flash.
   useEffect(() => {
-    setState(null); // crop change (or mount) → show the skeleton while the new crop loads
+    setState(null);
+  }, [crop]);
+  useEffect(() => {
     load();
   }, [load]);
 
@@ -101,6 +109,8 @@ export default function Page() {
           </div>
           <GrowthStageCard state={state} crop={crop} />
         </div>
+
+        <RiskPanel zone={zone} />
 
         <RecordsPanel state={state} />
         <SensorPane />

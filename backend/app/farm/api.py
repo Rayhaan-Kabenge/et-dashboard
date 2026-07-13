@@ -6,8 +6,8 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from ..config import get_settings
-from . import store
-from .schemas import Field, FieldsResponse
+from . import risk as risk_svc, store
+from .schemas import Field, FieldsResponse, RiskResponse
 
 router = APIRouter(prefix="/api", tags=["farm"])
 
@@ -36,3 +36,15 @@ def activate_field(field_id: str):
     if field is None:
         raise HTTPException(status_code=404, detail="field not found")
     return field
+
+
+@router.get("/risk", response_model=RiskResponse)
+def get_risk(zone_id: str):
+    """Pre-computed Bayesian risk posteriors for the zone's crop (read-only). Serves
+    the three-zone skew-normal distributions when the crop is covered; otherwise a
+    graceful 'analysis pending' state. Never applies one crop's model to another."""
+    store.ensure_seeded(get_settings())
+    zone = store.get_zone(zone_id)
+    if zone is None:
+        raise HTTPException(status_code=404, detail="zone not found")
+    return risk_svc.risk_for_zone(zone)

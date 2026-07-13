@@ -4,9 +4,12 @@ import type { StateResponse } from "./types";
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, "") || "http://localhost:8000";
 
-export async function fetchState(refresh = false, crop?: string): Promise<StateResponse> {
+export async function fetchState(refresh = false, crop?: string, zoneId?: string): Promise<StateResponse> {
   const q = new URLSearchParams();
   if (refresh) q.set("refresh", "1");
+  // zone_id is the primary selector (its sheet drives the run); crop stays as a
+  // backwards-compatible alias. The backend resolves zone_id first.
+  if (zoneId) q.set("zone_id", zoneId);
   if (crop) q.set("crop", crop);
   const qs = q.toString();
   const url = `${API_BASE}/api/state${qs ? `?${qs}` : ""}`;

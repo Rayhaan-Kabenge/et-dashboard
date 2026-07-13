@@ -55,3 +55,26 @@ class FieldCreate(BaseModel):
 class FieldsResponse(BaseModel):
     active_field_id: Optional[str] = None
     fields: list[Field] = []
+
+
+class RiskResponse(BaseModel):
+    """Pre-computed Bayesian risk posteriors for a zone's crop (read-only assembly).
+
+    `status="ok"` carries the three-zone (Below/Target/Above) skew-normal posteriors
+    per metric; `status="unavailable"` carries only a message (the zone's crop is not
+    covered by any posterior yet, or the data file is missing). Nothing is computed
+    live — this just serves the JSON, gated by the zone's crop."""
+    status: str                                        # "ok" | "unavailable"
+    zone_id: str
+    zone_crop: str
+    zone_name: Optional[str] = None
+    model_crop: Optional[str] = None                   # crop(s) the posterior is based on
+    ratio_basis: Optional[str] = None                  # applied ÷ recommended (from the JSON)
+    distribution: Optional[str] = None                 # e.g. "skew_normal"
+    zone_bands: Optional[dict[str, Any]] = None        # Below/Target/Above ratio ranges
+    zone_observations: Optional[dict[str, int]] = None # n per band (honest confidence)
+    metric_display_order: Optional[list[str]] = None
+    metrics: Optional[dict[str, Any]] = None           # per-metric per-band μ/σ/α + CIs
+    caveats: list[str] = []
+    source: Optional[str] = None
+    message: Optional[str] = None
